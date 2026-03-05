@@ -1,0 +1,190 @@
+{
+ "actions": [],
+ "autoname": "VKL-MPS-.YYYY.-.#####",
+ "creation": "2026-03-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "borrower",
+  "statement_file",
+  "period_from",
+  "period_to",
+  "parse_status",
+  "sb_summary",
+  "monthly_avg_inflow",
+  "monthly_avg_outflow",
+  "avg_monthly_balance",
+  "salary_credit_regularity",
+  "loan_repayments_detected",
+  "net_cashflow_trend",
+  "sb_gambling",
+  "gambling_transactions_detected",
+  "gambling_total",
+  "sb_transactions",
+  "parsed_transactions",
+  "sb_errors",
+  "parse_error_log"
+ ],
+ "fields": [
+  {
+   "fieldname": "borrower",
+   "fieldtype": "Link",
+   "label": "Borrower (Customer)",
+   "options": "Customer",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "statement_file",
+   "fieldtype": "Attach",
+   "label": "M-Pesa Statement File",
+   "reqd": 1,
+   "description": "Accepts PDF or CSV. Uploading triggers the parse background job."
+  },
+  {
+   "fieldname": "period_from",
+   "fieldtype": "Date",
+   "label": "Period From",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "period_to",
+   "fieldtype": "Date",
+   "label": "Period To",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "parse_status",
+   "fieldtype": "Select",
+   "label": "Parse Status",
+   "options": "Pending\nParsed\nFailed",
+   "default": "Pending",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sb_summary",
+   "fieldtype": "Section Break",
+   "label": "Parsed Summary (Read Only)"
+  },
+  {
+   "fieldname": "monthly_avg_inflow",
+   "fieldtype": "Currency",
+   "label": "Monthly Avg Inflow",
+   "read_only": 1
+  },
+  {
+   "fieldname": "monthly_avg_outflow",
+   "fieldtype": "Currency",
+   "label": "Monthly Avg Outflow",
+   "read_only": 1
+  },
+  {
+   "fieldname": "avg_monthly_balance",
+   "fieldtype": "Currency",
+   "label": "Avg Monthly Closing Balance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "salary_credit_regularity",
+   "fieldtype": "Float",
+   "label": "Salary Credit Regularity (%)",
+   "read_only": 1,
+   "description": "% of months with consistent salary credit from same employer source."
+  },
+  {
+   "fieldname": "loan_repayments_detected",
+   "fieldtype": "Currency",
+   "label": "Loan Repayments Detected (Total)",
+   "read_only": 1,
+   "description": "Total outflows identified as loan repayments to other lenders."
+  },
+  {
+   "fieldname": "net_cashflow_trend",
+   "fieldtype": "Select",
+   "label": "Net Cashflow Trend",
+   "options": "\nImproving\nStable\nDeclining",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_gambling",
+   "fieldtype": "Section Break",
+   "label": "Gambling Risk"
+  },
+  {
+   "fieldname": "gambling_transactions_detected",
+   "fieldtype": "Check",
+   "label": "Gambling Transactions Detected",
+   "read_only": 1,
+   "description": "True if any transactions to SportPesa, Odibets, Betika, Betway, or Mozzart are found."
+  },
+  {
+   "fieldname": "gambling_total",
+   "fieldtype": "Currency",
+   "label": "Total Gambling Spend",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_transactions",
+   "fieldtype": "Section Break",
+   "label": "Parsed Transactions (JSON)"
+  },
+  {
+   "fieldname": "parsed_transactions",
+   "fieldtype": "JSON",
+   "label": "Parsed Transactions",
+   "description": "JSON array: [{date, type, amount, balance, description, category, counterparty}]"
+  },
+  {
+   "fieldname": "sb_errors",
+   "fieldtype": "Section Break",
+   "label": "Parse Errors"
+  },
+  {
+   "fieldname": "parse_error_log",
+   "fieldtype": "Small Text",
+   "label": "Parse Error Log",
+   "description": "Error details if parse_status = Failed."
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vila Kazi Lending",
+ "name": "M-Pesa Statement",
+ "naming_rule": "Expression (using \"autoname\" field)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Loan Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "borrower",
+ "track_changes": 1
+}

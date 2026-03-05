@@ -1,0 +1,1 @@
+vila_kazi_lending.patches.set_vk_loan_stage_from_status

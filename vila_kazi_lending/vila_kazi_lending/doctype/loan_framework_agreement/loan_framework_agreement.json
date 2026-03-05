@@ -1,0 +1,145 @@
+{
+ "actions": [],
+ "autoname": "VKL-FA-.YYYY.-.#####",
+ "creation": "2026-03-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "borrower",
+  "agreement_template",
+  "clause_version",
+  "status",
+  "sb_documents",
+  "generated_pdf",
+  "signed_document",
+  "signed_date",
+  "valid_from",
+  "valid_until",
+  "sb_revocation",
+  "revoked_by",
+  "revocation_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "borrower",
+   "fieldtype": "Link",
+   "label": "Borrower (Customer)",
+   "options": "Customer",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "agreement_template",
+   "fieldtype": "Link",
+   "label": "Agreement Template",
+   "options": "Loan Agreement Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "clause_version",
+   "fieldtype": "Data",
+   "label": "Clause Version",
+   "reqd": 1,
+   "description": "Version of the agreement clause. E.g. v1.2"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending Signature\nActive\nExpired\nRevoked",
+   "default": "Pending Signature",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sb_documents",
+   "fieldtype": "Section Break",
+   "label": "Documents"
+  },
+  {
+   "fieldname": "generated_pdf",
+   "fieldtype": "Attach",
+   "label": "Generated Agreement PDF",
+   "description": "System-generated unsigned PDF sent to borrower for signing."
+  },
+  {
+   "fieldname": "signed_document",
+   "fieldtype": "Attach",
+   "label": "Signed Document",
+   "description": "Signed document uploaded by borrower. Uploading this auto-activates the agreement."
+  },
+  {
+   "fieldname": "signed_date",
+   "fieldtype": "Date",
+   "label": "Signed Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "valid_from",
+   "fieldtype": "Date",
+   "label": "Valid From"
+  },
+  {
+   "fieldname": "valid_until",
+   "fieldtype": "Date",
+   "label": "Valid Until",
+   "description": "Leave blank for perpetual agreements."
+  },
+  {
+   "fieldname": "sb_revocation",
+   "fieldtype": "Section Break",
+   "label": "Revocation"
+  },
+  {
+   "fieldname": "revoked_by",
+   "fieldtype": "Link",
+   "label": "Revoked By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "revocation_reason",
+   "fieldtype": "Small Text",
+   "label": "Revocation Reason"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vila Kazi Lending",
+ "name": "Loan Framework Agreement",
+ "naming_rule": "Expression (using \"autoname\" field)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Loan Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "borrower",
+ "track_changes": 1
+}

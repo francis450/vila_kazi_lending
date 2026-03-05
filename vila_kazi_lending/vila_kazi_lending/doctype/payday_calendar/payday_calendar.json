@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "autoname": "field:bank_name",
+ "creation": "2026-03-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "bank_name",
+  "payday_day",
+  "weekend_adjustment",
+  "is_active",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "bank_name",
+   "fieldtype": "Link",
+   "label": "Bank",
+   "options": "Bank",
+   "reqd": 1,
+   "in_list_view": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "payday_day",
+   "fieldtype": "Int",
+   "label": "Payday Day of Month",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Day of month the bank pays salaries. E.g. 25 = 25th of each month."
+  },
+  {
+   "fieldname": "weekend_adjustment",
+   "fieldtype": "Select",
+   "label": "Weekend Adjustment",
+   "options": "Bring Forward\nPush to Monday",
+   "default": "Bring Forward",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Bring Forward = Friday before the weekend. Push to Monday = following Monday."
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Active",
+   "default": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes",
+   "description": "E.g. Government banks may delay in December due to budget cycle."
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vila Kazi Lending",
+ "name": "Payday Calendar",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Loan Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "bank_name",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "bank_name",
+ "track_changes": 1
+}

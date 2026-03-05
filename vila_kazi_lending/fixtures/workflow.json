@@ -1,0 +1,366 @@
+[
+ {
+  "doctype": "Workflow",
+  "name": "VK Loan Application",
+  "workflow_name": "VK Loan Application",
+  "document_type": "Loan Application",
+  "workflow_state_field": "vk_loan_stage",
+  "is_active": 1,
+  "send_email_alert": 0,
+  "states": [
+   {"state": "Draft",                     "doc_status": "1", "allow_edit": "Lender Staff"},
+   {"state": "Intake",                    "doc_status": "1", "allow_edit": "Lender Staff"},
+   {"state": "Refinancing Requested",     "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Pending KYC Verification",  "doc_status": "1", "allow_edit": "Lender Staff"},
+   {"state": "Gate Check",                "doc_status": "1", "allow_edit": "System Manager"},
+   {"state": "Lender Review",             "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Pending Appraisal",         "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Standard Review",           "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Appraisal Complete",        "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Review Required",           "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Pending Lender Confirm",    "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Refinancing Approved",      "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "New Loan Calculation",      "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Approved",                  "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Declined",                  "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Refinancing Declined",      "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Duplicate - Review",        "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Pending Agreement Signing", "doc_status": "1", "allow_edit": "Lender Staff"},
+   {"state": "Agreement Signed",          "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Confirmed for Disbursement","doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Pending Disbursement",      "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Disbursed",                 "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Active",                    "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Repaid",                    "doc_status": "1", "allow_edit": "System Manager"}
+  ],
+  "transitions": [
+   {
+    "state": "Draft",
+    "action": "Submit Application",
+    "next_state": "Intake",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Draft",
+    "action": "Submit Application",
+    "next_state": "Intake",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Intake",
+    "action": "Submit for KYC",
+    "next_state": "Pending KYC Verification",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Intake",
+    "action": "Submit for KYC",
+    "next_state": "Pending KYC Verification",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending KYC Verification",
+    "action": "Mark KYC Verified",
+    "next_state": "Gate Check",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending KYC Verification",
+    "action": "Mark KYC Verified",
+    "next_state": "Gate Check",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Gate Check",
+    "action": "Pass Gate Check",
+    "next_state": "Pending Appraisal",
+    "allowed": "System Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Gate Check",
+    "action": "Flag as Duplicate",
+    "next_state": "Duplicate - Review",
+    "allowed": "System Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Duplicate - Review",
+    "action": "Resolve Duplicate",
+    "next_state": "Pending Appraisal",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Duplicate - Review",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending KYC Verification",
+    "action": "Mark KYC Rejected",
+    "next_state": "Draft",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending KYC Verification",
+    "action": "Mark KYC Rejected",
+    "next_state": "Draft",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Appraisal Complete",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Appraisal Complete",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Review Required",
+    "action": "Override Approve",
+    "next_state": "Approved",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_decision_notes != \"\""
+   },
+   {
+    "state": "Review Required",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Standard Review",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Standard Review",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Lender Confirm",
+    "action": "Confirm",
+    "next_state": "Confirmed for Disbursement",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Lender Confirm",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Lender Review",
+    "action": "Approve Refinancing",
+    "next_state": "Refinancing Approved",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Lender Review",
+    "action": "Decline",
+    "next_state": "Refinancing Declined",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Agreement Signing",
+    "action": "Mark Agreement Signed",
+    "next_state": "Agreement Signed",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Agreement Signing",
+    "action": "Mark Agreement Signed",
+    "next_state": "Agreement Signed",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Disbursement",
+    "action": "Confirm Disbursement",
+    "next_state": "Disbursed",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Complete Appraisal",
+    "next_state": "Appraisal Complete",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Complete Appraisal",
+    "next_state": "Appraisal Complete",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Approved",
+    "action": "Send Agreement",
+    "next_state": "Pending Agreement Signing",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Approved",
+    "action": "Send Agreement",
+    "next_state": "Pending Agreement Signing",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Agreement Signed",
+    "action": "Request Disbursement",
+    "next_state": "Pending Disbursement",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Agreement Signed",
+    "action": "Request Disbursement",
+    "next_state": "Pending Disbursement",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Disbursed",
+    "action": "Set Active",
+    "next_state": "Active",
+    "allowed": "System Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Active",
+    "action": "Mark Repaid",
+    "next_state": "Repaid",
+    "allowed": "System Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Confirmed for Disbursement",
+    "action": "Initiate Disbursement",
+    "next_state": "Pending Disbursement",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Route to Standard Review",
+    "next_state": "Standard Review",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Route to Standard Review",
+    "next_state": "Standard Review",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Flag for Review",
+    "next_state": "Review Required",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Approved",
+    "action": "Send for Lender Confirmation",
+    "next_state": "Pending Lender Confirm",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Active",
+    "action": "Request Refinancing",
+    "next_state": "Refinancing Requested",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Refinancing Requested",
+    "action": "Submit for Lender Review",
+    "next_state": "Lender Review",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Refinancing Approved",
+    "action": "Calculate New Loan",
+    "next_state": "New Loan Calculation",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "New Loan Calculation",
+    "action": "Submit Calculation",
+    "next_state": "Pending Lender Confirm",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   }
+  ]
+ },
+ {
+  "doctype": "Workflow",
+  "name": "VK Collections",
+  "workflow_name": "VK Collections",
+  "document_type": "Repayment Reconciliation",
+  "workflow_state_field": "vk_collections_stage",
+  "is_active": 1,
+  "send_email_alert": 0,
+  "states": [
+   {"state": "None",              "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Collections Active","doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Written Off",       "doc_status": "1", "allow_edit": "System Manager"}
+  ],
+  "transitions": [
+   {
+    "state": "None",
+    "action": "Set Collections Active",
+    "next_state": "Collections Active",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0,
+    "condition": "doc.status == \"Overdue\""
+   },
+   {
+    "state": "Collections Active",
+    "action": "Write Off",
+    "next_state": "Written Off",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_write_off_reason"
+   }
+  ]
+ }
+]

@@ -1,0 +1,217 @@
+{
+ "actions": [],
+ "autoname": "field:customer",
+ "creation": "2026-03-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "kyc_status",
+  "credit_category",
+  "sb_identity",
+  "national_id_number",
+  "national_id_scan",
+  "sb_employment",
+  "employer_name",
+  "employment_letter",
+  "bank",
+  "bank_account_number",
+  "sb_financial",
+  "mpesa_number",
+  "net_salary",
+  "sb_agreement",
+  "framework_agreement",
+  "sb_credit",
+  "credit_score",
+  "total_borrowed",
+  "total_repaid",
+  "outstanding_balance",
+  "on_time_repayment_rate",
+  "sb_notes",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1,
+   "in_list_view": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "kyc_status",
+   "fieldtype": "Select",
+   "label": "KYC Status",
+   "options": "Pending\nVerified\nRejected",
+   "default": "Pending",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "credit_category",
+   "fieldtype": "Select",
+   "label": "Credit Category",
+   "options": "\nNew\nSilver\nGold\nPlatinum",
+   "default": "New"
+  },
+  {
+   "fieldname": "sb_identity",
+   "fieldtype": "Section Break",
+   "label": "Identity & KYC"
+  },
+  {
+   "fieldname": "national_id_number",
+   "fieldtype": "Data",
+   "label": "National ID Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "national_id_scan",
+   "fieldtype": "Attach",
+   "label": "National ID Scan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sb_employment",
+   "fieldtype": "Section Break",
+   "label": "Employment Details"
+  },
+  {
+   "fieldname": "employer_name",
+   "fieldtype": "Data",
+   "label": "Employer Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employment_letter",
+   "fieldtype": "Attach",
+   "label": "Employment Letter",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bank",
+   "fieldtype": "Link",
+   "label": "Employer Bank",
+   "options": "Bank",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bank_account_number",
+   "fieldtype": "Data",
+   "label": "Bank Account Number"
+  },
+  {
+   "fieldname": "sb_financial",
+   "fieldtype": "Section Break",
+   "label": "Financial Details"
+  },
+  {
+   "fieldname": "mpesa_number",
+   "fieldtype": "Data",
+   "label": "M-Pesa Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "net_salary",
+   "fieldtype": "Currency",
+   "label": "Net Monthly Salary",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sb_agreement",
+   "fieldtype": "Section Break",
+   "label": "Framework Agreement"
+  },
+  {
+   "fieldname": "framework_agreement",
+   "fieldtype": "Link",
+   "label": "Active Framework Agreement",
+   "options": "Loan Framework Agreement"
+  },
+  {
+   "fieldname": "sb_credit",
+   "fieldtype": "Section Break",
+   "label": "Credit History (Computed)"
+  },
+  {
+   "fieldname": "credit_score",
+   "fieldtype": "Float",
+   "label": "Credit Score (0–100)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_borrowed",
+   "fieldtype": "Currency",
+   "label": "Total Borrowed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_repaid",
+   "fieldtype": "Currency",
+   "label": "Total Repaid",
+   "read_only": 1
+  },
+  {
+   "fieldname": "outstanding_balance",
+   "fieldtype": "Currency",
+   "label": "Outstanding Balance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "on_time_repayment_rate",
+   "fieldtype": "Float",
+   "label": "On-Time Repayment Rate (%)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Internal Notes"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vila Kazi Lending",
+ "name": "Borrower Profile",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Loan Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "customer",
+ "track_changes": 1
+}

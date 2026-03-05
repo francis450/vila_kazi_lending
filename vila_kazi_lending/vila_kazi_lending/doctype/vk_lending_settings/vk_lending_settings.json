@@ -1,0 +1,61 @@
+{
+ "doctype": "DocType",
+ "module": "Vila Kazi Lending",
+ "name": "VK Lending Settings",
+ "issingle": 1,
+ "track_changes": 1,
+ "fields": [
+  {
+   "fieldname": "loan_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Paybill & Repayment"
+  },
+  {
+   "fieldname": "paybill_number",
+   "fieldtype": "Data",
+   "label": "Paybill Number",
+   "description": "M-Pesa Paybill number used by borrowers to repay loans."
+  },
+  {
+   "fieldname": "paybill_account_ref_prefix",
+   "fieldtype": "Data",
+   "label": "Paybill Account Reference",
+   "description": "Default account reference instruction (e.g. 'Your registered phone number')."
+  },
+  {
+   "fieldname": "notification_section",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "fieldname": "lender_notification_email",
+   "fieldtype": "Data",
+   "label": "Lender Notification Email Override",
+   "description": "If set, all internal notifications go here instead of all Lender Manager users."
+  },
+  {
+   "fieldname": "digest_section",
+   "fieldtype": "Section Break",
+   "label": "Overdue Digest"
+  },
+  {
+   "fieldname": "last_overdue_digest_sent",
+   "fieldtype": "Date",
+   "label": "Last Overdue Digest Sent",
+   "read_only": 1,
+   "description": "Automatically updated by the daily scheduler. Reset manually to re-send the digest."
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Lender Manager",
+   "read": 1,
+   "write": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1
+  }
+ ]
+}

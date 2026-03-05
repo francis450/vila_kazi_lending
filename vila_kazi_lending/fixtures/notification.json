@@ -1,0 +1,189 @@
+[
+ {
+  "doctype": "Notification",
+  "name": "VK-N01 New Application",
+  "document_type": "Loan Application",
+  "event": "Submit",
+  "subject": "New Loan Application: {{ doc.name }} — {{ doc.applicant_name or doc.applicant }}",
+  "message": "A new loan application has been received.<br><br><b>Applicant:</b> {{ doc.applicant_name or doc.applicant }}<br><b>Amount:</b> KES {{ frappe.utils.fmt_money(doc.loan_amount or 0) }}<br><b>Application:</b> {{ doc.name }}<br><b>Stage:</b> {{ doc.vk_loan_stage or 'Draft' }}<br><br>Please log in to complete KYC verification or review the application.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_role": "Lender Manager"},
+   {"receiver_by_role": "Lender Staff"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N02 KYC Verified",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage == \"Pending Appraisal\"",
+  "subject": "Your Documents Have Been Verified",
+  "message": "Dear {{ doc.applicant_name or doc.applicant }},<br><br>Thank you for submitting your documents. We have successfully verified your identity and employment details.<br><br>We are now reviewing your application and will be in touch shortly with a decision.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_document_field": "vk_borrower_email"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N03 KYC Rejected",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_rejection_reason",
+  "condition": "doc.vk_loan_stage == \"Pending KYC Verification\" and bool(doc.vk_rejection_reason)",
+  "subject": "Document Verification — Action Required",
+  "message": "Dear {{ doc.applicant_name or doc.applicant }},<br><br>We were unable to verify your documents for the following reason:<br><br><b>{{ doc.vk_rejection_reason }}</b><br><br>Please resubmit the correct documents via the portal or contact us directly. Your application will resume once the documents are re-verified.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_document_field": "vk_borrower_email"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N04 Loan Approved",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage == \"Approved\"",
+  "subject": "Loan Approved — {{ doc.name }}",
+  "message": "Dear {{ doc.applicant_name or doc.applicant }},<br><br>Congratulations! Your loan application has been approved.<br><br><b>Approved Amount:</b> KES {{ frappe.utils.fmt_money(doc.loan_amount or 0) }}<br><br>A framework agreement will be sent to you shortly for signing. Please upload the signed copy via the portal or deliver it to our office.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_document_field": "vk_borrower_email"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N05 Application Declined",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage in (\"Declined\", \"Refinancing Declined\")",
+  "subject": "Your Loan Application — {{ doc.name }}",
+  "message": "Dear {{ doc.applicant_name or doc.applicant }},<br><br>We regret to inform you that your loan application could not be approved at this time.<br><br><b>Reason:</b> {{ doc.vk_rejection_reason or 'Please contact us for details.' }}<br><br>We encourage you to stay in touch and reapply in the future.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_document_field": "vk_borrower_email"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N06 Agreement Active",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage == \"Agreement Signed\"",
+  "subject": "Framework Agreement Signed — {{ doc.name }}",
+  "message": "The framework agreement for loan application <b>{{ doc.name }}</b> has been signed and is now active.<br><br><b>Borrower:</b> {{ doc.applicant_name or doc.applicant }}<br><b>Amount:</b> KES {{ frappe.utils.fmt_money(doc.loan_amount or 0) }}<br><br>The application has advanced to Pending Disbursement. Please proceed with fund transfer.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_role": "Lender Manager"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N07 Pending Disbursement",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage == \"Pending Disbursement\"",
+  "subject": "Disbursement Ready — {{ doc.name }}",
+  "message": "Loan <b>{{ doc.name }}</b> for <b>{{ doc.applicant_name or doc.applicant }}</b> is ready for disbursement.<br><br><b>Amount:</b> KES {{ frappe.utils.fmt_money(doc.loan_amount or 0) }}<br><b>Due Date:</b> {{ doc.vk_payday_date or 'TBD' }}<br><br>Please transfer the funds and record the M-Pesa confirmation code in the system.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_role": "Lender Manager"},
+   {"receiver_by_role": "Lender Staff"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N08 Loan Disbursed",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage == \"Active\"",
+  "subject": "Your Loan Has Been Disbursed — {{ doc.name }}",
+  "message": "Dear {{ doc.applicant_name or doc.applicant }},<br><br>Your loan has been disbursed successfully to your M-Pesa account.<br><br><b>Amount:</b> KES {{ frappe.utils.fmt_money(doc.loan_amount or 0) }}<br><b>Repayment Due Date:</b> {{ doc.vk_payday_date or 'See your agreement' }}<br><br>Please ensure repayment is made on or before the due date to maintain your credit standing.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_document_field": "vk_borrower_email"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N14 Loan Repaid",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage == \"Repaid\"",
+  "subject": "Loan Fully Repaid — Thank You",
+  "message": "Dear {{ doc.applicant_name or doc.applicant }},<br><br>We have received your full repayment for loan application <b>{{ doc.name }}</b>. Thank you!<br><br>Your account is now in good standing. You are welcome to apply for a new loan at any time.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_document_field": "vk_borrower_email"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N16 Fast-Lane Confirm Required",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage == \"Pending Lender Confirm\"",
+  "subject": "Fast-Lane Confirm Required — {{ doc.name }}",
+  "message": "A repeat borrower loan is awaiting your confirmation.<br><br><b>Borrower:</b> {{ doc.applicant_name or doc.applicant }}<br><b>Amount:</b> KES {{ frappe.utils.fmt_money(doc.loan_amount or 0) }}<br><b>Category:</b> {{ doc.vk_borrower_category or 'N/A' }}<br><b>Due Date:</b> {{ doc.vk_payday_date or 'TBD' }}<br><br>Please open the application to confirm or decline: /app/loan-application/{{ doc.name }}",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_role": "Lender Manager"}
+  ]
+ },
+ {
+  "doctype": "Notification",
+  "name": "VK-N17 Refinancing Requested",
+  "document_type": "Loan Application",
+  "event": "Value Change",
+  "value_changed": "vk_loan_stage",
+  "condition": "doc.vk_loan_stage == \"Refinancing Requested\"",
+  "subject": "Refinancing Request — {{ doc.name }}",
+  "message": "A refinancing request has been received from <b>{{ doc.applicant_name or doc.applicant }}</b>.<br><br><b>Top-Up Requested:</b> KES {{ frappe.utils.fmt_money(doc.vk_top_up_amount or 0) }}<br><b>Original Loan:</b> {{ doc.vk_refinancing_of_loan or doc.vk_refinancing_of or 'N/A' }}<br><br>Please review the application and approve or decline.",
+  "enabled": 1,
+  "channel": "Email",
+  "send_to_all_assignees": 0,
+  "attach_print": 0,
+  "recipients": [
+   {"receiver_by_role": "Lender Manager"}
+  ]
+ }
+]

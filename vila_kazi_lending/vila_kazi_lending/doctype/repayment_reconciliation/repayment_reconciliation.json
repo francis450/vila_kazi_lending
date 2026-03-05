@@ -1,0 +1,169 @@
+{
+ "actions": [],
+ "autoname": "VKL-REC-.YYYY.-.#####",
+ "creation": "2026-03-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "loan",
+  "borrower",
+  "status",
+  "sb_expected",
+  "expected_date",
+  "expected_amount",
+  "paybill_account_ref",
+  "sb_received",
+  "received_date",
+  "received_amount",
+  "payment_reference",
+  "sb_computed",
+  "variance",
+  "days_overdue",
+  "sb_notes",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "loan",
+   "fieldtype": "Link",
+   "label": "Loan",
+   "options": "Loan",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "borrower",
+   "fieldtype": "Link",
+   "label": "Borrower (Customer)",
+   "options": "Customer",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Expected\nReceived\nPartial\nOverdue\nWaived",
+   "default": "Expected",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sb_expected",
+   "fieldtype": "Section Break",
+   "label": "Expected Repayment"
+  },
+  {
+   "fieldname": "expected_date",
+   "fieldtype": "Date",
+   "label": "Expected Date (Payday)",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Payday-resolved due date. Copied from Loan.vk_due_date."
+  },
+  {
+   "fieldname": "expected_amount",
+   "fieldtype": "Currency",
+   "label": "Expected Amount",
+   "reqd": 1,
+   "description": "Principal + interest + fees."
+  },
+  {
+   "fieldname": "paybill_account_ref",
+   "fieldtype": "Data",
+   "label": "Paybill Account Reference",
+   "description": "The paybill account reference the borrower should use when paying."
+  },
+  {
+   "fieldname": "sb_received",
+   "fieldtype": "Section Break",
+   "label": "Actual Receipt"
+  },
+  {
+   "fieldname": "received_date",
+   "fieldtype": "Date",
+   "label": "Received Date"
+  },
+  {
+   "fieldname": "received_amount",
+   "fieldtype": "Currency",
+   "label": "Received Amount"
+  },
+  {
+   "fieldname": "payment_reference",
+   "fieldtype": "Data",
+   "label": "Payment Reference",
+   "description": "M-Pesa or bank payment confirmation code."
+  },
+  {
+   "fieldname": "sb_computed",
+   "fieldtype": "Section Break",
+   "label": "Computed (Read Only)"
+  },
+  {
+   "fieldname": "variance",
+   "fieldtype": "Currency",
+   "label": "Variance",
+   "read_only": 1,
+   "description": "received_amount − expected_amount. Negative = underpayment."
+  },
+  {
+   "fieldname": "days_overdue",
+   "fieldtype": "Int",
+   "label": "Days Overdue",
+   "read_only": 1,
+   "description": "today − expected_date when status = Overdue."
+  },
+  {
+   "fieldname": "sb_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes",
+   "description": "E.g. Borrower confirmed partial on 25th, balance promised on 28th."
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vila Kazi Lending",
+ "name": "Repayment Reconciliation",
+ "naming_rule": "Expression (using \"autoname\" field)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Loan Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "expected_date",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "loan",
+ "track_changes": 1
+}

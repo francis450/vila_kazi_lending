@@ -1,0 +1,243 @@
+{
+ "actions": [],
+ "autoname": "VKL-APR-.YYYY.-.#####",
+ "creation": "2026-03-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "loan_application",
+  "borrower",
+  "appraisal_date",
+  "sb_eligibility",
+  "net_salary",
+  "existing_liabilities",
+  "max_eligible_amount",
+  "requested_amount",
+  "within_limit",
+  "sb_mpesa",
+  "mpesa_statement",
+  "sb_scoring",
+  "appraisal_score",
+  "salary_regularity_score",
+  "cashflow_trend_score",
+  "competing_loan_score",
+  "payday_behavior_score",
+  "gambling_score",
+  "request_ratio_score",
+  "sb_outcome",
+  "recommendation",
+  "auto_approved",
+  "risk_flags",
+  "ai_summary",
+  "sb_review",
+  "reviewed_by",
+  "decision_notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "loan_application",
+   "fieldtype": "Link",
+   "label": "Loan Application",
+   "options": "Loan Application",
+   "reqd": 1,
+   "in_list_view": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "borrower",
+   "fieldtype": "Link",
+   "label": "Borrower (Customer)",
+   "options": "Customer",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "appraisal_date",
+   "fieldtype": "Datetime",
+   "label": "Appraisal Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_eligibility",
+   "fieldtype": "Section Break",
+   "label": "Eligibility Assessment"
+  },
+  {
+   "fieldname": "net_salary",
+   "fieldtype": "Currency",
+   "label": "Net Salary (Snapshot)",
+   "reqd": 1,
+   "description": "Copied from Borrower Profile at appraisal time."
+  },
+  {
+   "fieldname": "existing_liabilities",
+   "fieldtype": "Currency",
+   "label": "Existing Liabilities",
+   "description": "Existing loan deductions at borrower's bank."
+  },
+  {
+   "fieldname": "max_eligible_amount",
+   "fieldtype": "Currency",
+   "label": "Maximum Eligible Amount",
+   "read_only": 1,
+   "description": "(net_salary × 50%) − existing_liabilities"
+  },
+  {
+   "fieldname": "requested_amount",
+   "fieldtype": "Currency",
+   "label": "Requested Amount",
+   "reqd": 1
+  },
+  {
+   "fieldname": "within_limit",
+   "fieldtype": "Check",
+   "label": "Within Eligible Limit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_mpesa",
+   "fieldtype": "Section Break",
+   "label": "M-Pesa Statement"
+  },
+  {
+   "fieldname": "mpesa_statement",
+   "fieldtype": "Link",
+   "label": "M-Pesa Statement",
+   "options": "M-Pesa Statement",
+   "description": "Required for new borrowers. Optional for repeat borrowers with strong history."
+  },
+  {
+   "fieldname": "sb_scoring",
+   "fieldtype": "Section Break",
+   "label": "AI Scoring (Read Only)"
+  },
+  {
+   "fieldname": "appraisal_score",
+   "fieldtype": "Float",
+   "label": "Aggregate Appraisal Score (0–100)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "salary_regularity_score",
+   "fieldtype": "Float",
+   "label": "Salary Regularity (0–25)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cashflow_trend_score",
+   "fieldtype": "Float",
+   "label": "Cashflow Trend (0–20)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "competing_loan_score",
+   "fieldtype": "Float",
+   "label": "Competing Loan Burden (0–20)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payday_behavior_score",
+   "fieldtype": "Float",
+   "label": "Payday Behavior (0–15)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gambling_score",
+   "fieldtype": "Float",
+   "label": "Gambling Risk (0–10)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "request_ratio_score",
+   "fieldtype": "Float",
+   "label": "Request Ratio (0–10)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_outcome",
+   "fieldtype": "Section Break",
+   "label": "Appraisal Outcome"
+  },
+  {
+   "fieldname": "recommendation",
+   "fieldtype": "Select",
+   "label": "Recommendation",
+   "options": "\nApprove\nReview\nDecline",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "auto_approved",
+   "fieldtype": "Check",
+   "label": "Auto-Approved",
+   "read_only": 1,
+   "description": "Set true only when all 3 auto-approval gate conditions pass."
+  },
+  {
+   "fieldname": "risk_flags",
+   "fieldtype": "Small Text",
+   "label": "Risk Flags",
+   "description": "Comma-separated risk signals. E.g. Gambling detected, Competing loan repayments high."
+  },
+  {
+   "fieldname": "ai_summary",
+   "fieldtype": "Long Text",
+   "label": "AI Narrative Summary",
+   "description": "Natural language summary of the appraisal. Shown to the lender before approval decision."
+  },
+  {
+   "fieldname": "sb_review",
+   "fieldtype": "Section Break",
+   "label": "Manual Review"
+  },
+  {
+   "fieldname": "reviewed_by",
+   "fieldtype": "Link",
+   "label": "Reviewed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "decision_notes",
+   "fieldtype": "Text",
+   "label": "Decision Notes",
+   "description": "Free-text notes explaining the approval or override decision."
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vila Kazi Lending",
+ "name": "Loan Appraisal",
+ "naming_rule": "Expression (using \"autoname\" field)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Loan Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "loan_application",
+ "track_changes": 1
+}

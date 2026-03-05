@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "autoname": "VKL-DIS-.YYYY.-.#####",
+ "creation": "2026-03-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "loan",
+  "source_bank_account",
+  "status",
+  "sb_transfer",
+  "amount_disbursed",
+  "transfer_date",
+  "mpesa_confirmation_code",
+  "recipient_mpesa",
+  "sb_notes",
+  "disbursement_note"
+ ],
+ "fields": [
+  {
+   "fieldname": "loan",
+   "fieldtype": "Link",
+   "label": "Loan",
+   "options": "Loan",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "source_bank_account",
+   "fieldtype": "Link",
+   "label": "Source Bank Account (Lender)",
+   "options": "Bank Account",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "The lender's bank account from which funds were transferred."
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Sent\nConfirmed\nFailed",
+   "default": "Sent",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sb_transfer",
+   "fieldtype": "Section Break",
+   "label": "Transfer Details"
+  },
+  {
+   "fieldname": "amount_disbursed",
+   "fieldtype": "Currency",
+   "label": "Amount Disbursed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "transfer_date",
+   "fieldtype": "Date",
+   "label": "Transfer Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mpesa_confirmation_code",
+   "fieldtype": "Data",
+   "label": "M-Pesa Confirmation Code",
+   "reqd": 1,
+   "description": "M-Pesa transaction confirmation code received after the transfer."
+  },
+  {
+   "fieldname": "recipient_mpesa",
+   "fieldtype": "Data",
+   "label": "Recipient M-Pesa Number",
+   "reqd": 1,
+   "description": "Borrower's M-Pesa number. Should match Borrower Profile.mpesa_number."
+  },
+  {
+   "fieldname": "sb_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "disbursement_note",
+   "fieldtype": "Small Text",
+   "label": "Disbursement Note",
+   "description": "E.g. Split across two accounts due to daily transfer limit."
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vila Kazi Lending",
+ "name": "Loan Disbursement Source",
+ "naming_rule": "Expression (using \"autoname\" field)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Loan Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "loan",
+ "track_changes": 1
+}

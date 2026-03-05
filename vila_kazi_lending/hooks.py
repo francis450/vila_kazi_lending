@@ -5,6 +5,125 @@ app_description = "All customizations for Vila Kazi lending"
 app_email = "erpsolutionskenya@gmail.com"
 app_license = "mit"
 
+# ---------------------------------------------------------------------------
+# Fixtures — version-controlled Custom Fields on Loan Application and Loan
+# ---------------------------------------------------------------------------
+
+fixtures = [
+	{
+		"dt": "Custom Field",
+		"filters": [["name", "like", "Loan Application-vk_%"]],
+	},
+	{
+		"dt": "Custom Field",
+		"filters": [["name", "like", "Loan-vk_%"]],
+	},
+	{
+		"dt": "Custom Field",
+		"filters": [["name", "like", "Repayment Reconciliation-vk_%"]],
+	},
+	{
+		"dt": "Workflow State",
+		"filters": [["name", "in", [
+			"None", "Collections Active", "Written Off",
+			"Draft", "Intake", "Refinancing Requested", "Pending KYC Verification",
+			"Gate Check", "Lender Review", "Pending Appraisal", "Standard Review",
+			"Appraisal Complete", "Review Required", "Pending Lender Confirm",
+			"Refinancing Approved", "New Loan Calculation", "Approved", "Declined",
+			"Refinancing Declined", "Duplicate - Review", "Pending Agreement Signing",
+			"Agreement Signed", "Confirmed for Disbursement", "Pending Disbursement",
+			"Disbursed", "Active", "Repaid"
+		]]],
+	},
+	{
+		"dt": "Workflow Action Master",
+		"filters": [["name", "in", [
+			"Submit for KYC", "Mark KYC Verified", "Mark KYC Rejected",
+			"Approve", "Decline", "Override Approve", "Confirm",
+			"Approve Refinancing", "Mark Agreement Signed",
+			"Confirm Disbursement", "Set Collections Active", "Write Off",
+			"Complete Appraisal", "Send Agreement", "Request Disbursement",
+			"Set Active", "Mark Repaid",
+			"Initiate Disbursement", "Route to Standard Review", "Flag for Review",
+			"Send for Lender Confirmation", "Request Refinancing",
+			"Submit for Lender Review", "Calculate New Loan", "Submit Calculation",
+			"Submit Application", "Pass Gate Check", "Flag as Duplicate", "Resolve Duplicate"
+		]]],
+	},
+	{
+		"dt": "Workflow",
+		"filters": [["name", "in", ["VK Loan Application", "VK Collections"]]],
+	},
+	{
+		"dt": "Notification",
+		"filters": [["name", "like", "VK-%"]],
+	},
+	{
+		"dt": "Role",
+		"filters": [["name", "in", ["Lender Manager", "Lender Staff"]]],
+	},
+]
+
+# ---------------------------------------------------------------------------
+# Document Events
+# ---------------------------------------------------------------------------
+
+doc_events = {
+	# ------------------------------------------------------------------
+	# Loan Application — on_submit + on_update (stage-change notifications)
+	# ------------------------------------------------------------------
+	"Loan Application": {
+		"on_submit": "vila_kazi_lending.events.loan_application.on_submit",
+		"on_update": "vila_kazi_lending.events.loan_application.on_update",
+	},
+	# ------------------------------------------------------------------
+	# Borrower Profile — on_update
+	# KYC status transitions → advance linked Loan Applications
+	# ------------------------------------------------------------------
+	"Borrower Profile": {
+		"on_update": "vila_kazi_lending.events.borrower_profile.on_update",
+	},
+	# ------------------------------------------------------------------
+	# Loan Appraisal — on_update
+	# Evaluates hard/soft rules and advances Loan Application stage
+	# ------------------------------------------------------------------
+	"Loan Appraisal": {
+		"on_update": "vila_kazi_lending.events.loan_appraisal.on_update",
+	},
+	# ------------------------------------------------------------------
+	# Loan Disbursement Source — on_update
+	# Post-disbursement: activate loan, close original (refinancing), send N-08
+	# ------------------------------------------------------------------
+	"Loan Disbursement Source": {
+		"on_update": "vila_kazi_lending.events.loan_disbursement_source.on_update",
+	},
+	# ------------------------------------------------------------------
+	# Loan — on_submit
+	# Sets vk_accrual_cap = loan_amount × 2 and creates Repayment Reconciliation
+	# ------------------------------------------------------------------
+	"Loan": {
+		"on_submit": "vila_kazi_lending.events.loan.on_submit",
+	},
+	# ------------------------------------------------------------------
+	# Loan Interest Accrual — before_insert
+	# Enforces the Kenyan legal accrual cap (principal × 2)
+	# ------------------------------------------------------------------
+	"Loan Interest Accrual": {
+		"before_insert": "vila_kazi_lending.events.loan_interest_accrual.before_insert",
+	},
+}
+
+# ---------------------------------------------------------------------------
+# Scheduled Tasks
+# ---------------------------------------------------------------------------
+
+scheduler_events = {
+	"daily": [
+		"vila_kazi_lending.tasks.mark_overdue_repayments",
+		"vila_kazi_lending.tasks.send_pre_due_reminders",
+	],
+}
+
 # Apps
 # ------------------
 
@@ -43,7 +162,7 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Loan Application": "public/js/loan_application.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
