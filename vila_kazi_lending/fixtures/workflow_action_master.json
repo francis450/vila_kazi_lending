@@ -9,6 +9,15 @@
  {"doctype": "Workflow Action Master", "name": "Approve Refinancing",   "workflow_action_name": "Approve Refinancing"},
  {"doctype": "Workflow Action Master", "name": "Mark Agreement Signed", "workflow_action_name": "Mark Agreement Signed"},
  {"doctype": "Workflow Action Master", "name": "Confirm Disbursement",  "workflow_action_name": "Confirm Disbursement"},
+ {"doctype": "Workflow Action Master", "name": "Activate Collections",   "workflow_action_name": "Activate Collections"},
+ {"doctype": "Workflow Action Master", "name": "Mark Partial Payment",  "workflow_action_name": "Mark Partial Payment"},
+ {"doctype": "Workflow Action Master", "name": "Resume Collections",    "workflow_action_name": "Resume Collections"},
+ {"doctype": "Workflow Action Master", "name": "Log Promise to Pay",    "workflow_action_name": "Log Promise to Pay"},
+ {"doctype": "Workflow Action Master", "name": "Promise Kept",          "workflow_action_name": "Promise Kept"},
+ {"doctype": "Workflow Action Master", "name": "Promise Broken",        "workflow_action_name": "Promise Broken"},
+ {"doctype": "Workflow Action Master", "name": "Escalate",              "workflow_action_name": "Escalate"},
+ {"doctype": "Workflow Action Master", "name": "Mark Recovered",        "workflow_action_name": "Mark Recovered"},
+ {"doctype": "Workflow Action Master", "name": "Mark Paid",             "workflow_action_name": "Mark Paid"},
  {"doctype": "Workflow Action Master", "name": "Set Collections Active","workflow_action_name": "Set Collections Active"},
  {"doctype": "Workflow Action Master", "name": "Write Off",             "workflow_action_name": "Write Off"},
  {"doctype": "Workflow Action Master", "name": "Complete Appraisal",    "workflow_action_name": "Complete Appraisal"},
@@ -27,5 +36,6 @@
  {"doctype": "Workflow Action Master", "name": "Submit Application",          "workflow_action_name": "Submit Application"},
  {"doctype": "Workflow Action Master", "name": "Pass Gate Check",             "workflow_action_name": "Pass Gate Check"},
  {"doctype": "Workflow Action Master", "name": "Flag as Duplicate",           "workflow_action_name": "Flag as Duplicate"},
- {"doctype": "Workflow Action Master", "name": "Resolve Duplicate",           "workflow_action_name": "Resolve Duplicate"}
+ {"doctype": "Workflow Action Master", "name": "Resolve Duplicate",           "workflow_action_name": "Resolve Duplicate"},
+ {"doctype": "Workflow Action Master", "name": "Fast Lane Approve",           "workflow_action_name": "Fast Lane Approve"}
 ]

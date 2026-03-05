@@ -1,6 +1,11 @@
 [
- {"doctype": "Workflow State", "name": "None",                          "workflow_state_name": "None"},
+ {"doctype": "Workflow State", "name": "Pending Review",                "workflow_state_name": "Pending Review"},
  {"doctype": "Workflow State", "name": "Collections Active",            "workflow_state_name": "Collections Active"},
+ {"doctype": "Workflow State", "name": "Partially Paid",                "workflow_state_name": "Partially Paid"},
+ {"doctype": "Workflow State", "name": "Promise to Pay",                "workflow_state_name": "Promise to Pay"},
+ {"doctype": "Workflow State", "name": "Escalated",                     "workflow_state_name": "Escalated"},
+ {"doctype": "Workflow State", "name": "Paid",                          "workflow_state_name": "Paid"},
+ {"doctype": "Workflow State", "name": "Recovered",                     "workflow_state_name": "Recovered"},
  {"doctype": "Workflow State", "name": "Written Off",                   "workflow_state_name": "Written Off"},
  {"doctype": "Workflow State", "name": "Draft",                         "workflow_state_name": "Draft"},
  {"doctype": "Workflow State", "name": "Intake",                        "workflow_state_name": "Intake"},

@@ -49,6 +49,13 @@
     "allow_self_approval": 0
    },
    {
+    "state": "Draft",
+    "action": "Submit Application",
+    "next_state": "Intake",
+    "allowed": "Borrower",
+    "allow_self_approval": 0
+   },
+   {
     "state": "Intake",
     "action": "Submit for KYC",
     "next_state": "Pending KYC Verification",
@@ -61,6 +68,22 @@
     "next_state": "Pending KYC Verification",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "Intake",
+    "action": "Fast Lane Approve",
+    "next_state": "Approved",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_has_framework_agreement == 1 and doc.vk_clean_repayment_history == 1"
+   },
+   {
+    "state": "Intake",
+    "action": "Fast Lane Approve",
+    "next_state": "Approved",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_has_framework_agreement == 1 and doc.vk_clean_repayment_history == 1"
    },
    {
     "state": "Pending KYC Verification",
@@ -204,6 +227,13 @@
     "allow_self_approval": 0
    },
    {
+    "state": "Pending Agreement Signing",
+    "action": "Mark Agreement Signed",
+    "next_state": "Agreement Signed",
+    "allowed": "Borrower",
+    "allow_self_approval": 0
+   },
+   {
     "state": "Pending Disbursement",
     "action": "Confirm Disbursement",
     "next_state": "Disbursed",
@@ -309,6 +339,13 @@
     "allow_self_approval": 0
    },
    {
+    "state": "Active",
+    "action": "Request Refinancing",
+    "next_state": "Refinancing Requested",
+    "allowed": "Borrower",
+    "allow_self_approval": 0
+   },
+   {
     "state": "Refinancing Requested",
     "action": "Submit for Lender Review",
     "next_state": "Lender Review",
@@ -340,21 +377,177 @@
   "is_active": 1,
   "send_email_alert": 0,
   "states": [
-   {"state": "None",              "doc_status": "1", "allow_edit": "Lender Manager"},
-   {"state": "Collections Active","doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Pending Review",    "doc_status": "1", "allow_edit": "Lender Staff"},
+   {"state": "Collections Active","doc_status": "1", "allow_edit": "Lender Staff"},
+   {"state": "Partially Paid",    "doc_status": "1", "allow_edit": "Lender Staff"},
+   {"state": "Promise to Pay",    "doc_status": "1", "allow_edit": "Lender Staff"},
+   {"state": "Escalated",         "doc_status": "1", "allow_edit": "Lender Manager"},
+   {"state": "Paid",              "doc_status": "1", "allow_edit": "System Manager"},
+   {"state": "Recovered",         "doc_status": "1", "allow_edit": "System Manager"},
    {"state": "Written Off",       "doc_status": "1", "allow_edit": "System Manager"}
   ],
   "transitions": [
    {
-    "state": "None",
-    "action": "Set Collections Active",
+    "state": "Pending Review",
+    "action": "Activate Collections",
     "next_state": "Collections Active",
     "allowed": "Lender Manager",
-    "allow_self_approval": 0,
-    "condition": "doc.status == \"Overdue\""
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Review",
+    "action": "Activate Collections",
+    "next_state": "Collections Active",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
    },
    {
     "state": "Collections Active",
+    "action": "Mark Partial Payment",
+    "next_state": "Partially Paid",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Collections Active",
+    "action": "Mark Partial Payment",
+    "next_state": "Partially Paid",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Collections Active",
+    "action": "Log Promise to Pay",
+    "next_state": "Promise to Pay",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_promise_date"
+   },
+   {
+    "state": "Collections Active",
+    "action": "Log Promise to Pay",
+    "next_state": "Promise to Pay",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_promise_date"
+   },
+   {
+    "state": "Collections Active",
+    "action": "Escalate",
+    "next_state": "Escalated",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_escalation_reason"
+   },
+   {
+    "state": "Collections Active",
+    "action": "Mark Paid",
+    "next_state": "Paid",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Collections Active",
+    "action": "Mark Paid",
+    "next_state": "Paid",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Collections Active",
+    "action": "Write Off",
+    "next_state": "Written Off",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_write_off_reason"
+   },
+   {
+    "state": "Partially Paid",
+    "action": "Resume Collections",
+    "next_state": "Collections Active",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Partially Paid",
+    "action": "Resume Collections",
+    "next_state": "Collections Active",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Partially Paid",
+    "action": "Mark Paid",
+    "next_state": "Paid",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Partially Paid",
+    "action": "Mark Paid",
+    "next_state": "Paid",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Partially Paid",
+    "action": "Write Off",
+    "next_state": "Written Off",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0,
+    "condition": "doc.vk_write_off_reason"
+   },
+   {
+    "state": "Promise to Pay",
+    "action": "Mark Partial Payment",
+    "next_state": "Partially Paid",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Promise to Pay",
+    "action": "Mark Partial Payment",
+    "next_state": "Partially Paid",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Promise to Pay",
+    "action": "Promise Kept",
+    "next_state": "Paid",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Promise to Pay",
+    "action": "Promise Kept",
+    "next_state": "Paid",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Promise to Pay",
+    "action": "Promise Broken",
+    "next_state": "Collections Active",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Promise to Pay",
+    "action": "Promise Broken",
+    "next_state": "Collections Active",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Escalated",
+    "action": "Mark Recovered",
+    "next_state": "Recovered",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Escalated",
     "action": "Write Off",
     "next_state": "Written Off",
     "allowed": "Lender Manager",

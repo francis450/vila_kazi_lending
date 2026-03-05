@@ -327,6 +327,25 @@ def _check_fast_lane_gate(loan_application_name: str) -> tuple[bool, list[int]]:
 
 
 # ---------------------------------------------------------------------------
+# WF-02 Fast Lane — before_workflow_action safety net
+# ---------------------------------------------------------------------------
+
+
+def validate_fast_lane(doc, method=None):
+	"""
+	Server-side guard for the Fast Lane Approve workflow action.
+	The workflow condition already prevents the button from appearing, but
+	this hook blocks API-level bypass attempts.
+	"""
+	if frappe.flags.workflow_action != "Fast Lane Approve":
+		return
+	if not doc.vk_has_framework_agreement:
+		frappe.throw(_("Fast Lane requires an active Framework Agreement."))
+	if not doc.vk_clean_repayment_history:
+		frappe.throw(_("Fast Lane requires a clean repayment history."))
+
+
+# ---------------------------------------------------------------------------
 # Stage-transition email notifications
 # ---------------------------------------------------------------------------
 

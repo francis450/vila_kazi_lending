@@ -106,7 +106,7 @@ def mark_overdue_repayments() -> None:
 		frappe.db.set_value(
 			"Repayment Reconciliation",
 			rec["name"],
-			{"status": "Overdue", "days_overdue": days},
+			{"status": "Overdue", "days_overdue": days, "vk_collections_stage": "Pending Review"},
 		)
 
 	if newly_overdue:

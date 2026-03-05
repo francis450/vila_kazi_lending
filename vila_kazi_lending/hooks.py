@@ -25,7 +25,8 @@ fixtures = [
 	{
 		"dt": "Workflow State",
 		"filters": [["name", "in", [
-			"None", "Collections Active", "Written Off",
+			"Pending Review", "Collections Active", "Partially Paid",
+			"Promise to Pay", "Escalated", "Paid", "Recovered", "Written Off",
 			"Draft", "Intake", "Refinancing Requested", "Pending KYC Verification",
 			"Gate Check", "Lender Review", "Pending Appraisal", "Standard Review",
 			"Appraisal Complete", "Review Required", "Pending Lender Confirm",
@@ -38,6 +39,9 @@ fixtures = [
 	{
 		"dt": "Workflow Action Master",
 		"filters": [["name", "in", [
+			"Activate Collections", "Mark Partial Payment", "Resume Collections",
+			"Log Promise to Pay", "Promise Kept", "Promise Broken",
+			"Escalate", "Mark Recovered", "Mark Paid",
 			"Submit for KYC", "Mark KYC Verified", "Mark KYC Rejected",
 			"Approve", "Decline", "Override Approve", "Confirm",
 			"Approve Refinancing", "Mark Agreement Signed",
@@ -47,7 +51,8 @@ fixtures = [
 			"Initiate Disbursement", "Route to Standard Review", "Flag for Review",
 			"Send for Lender Confirmation", "Request Refinancing",
 			"Submit for Lender Review", "Calculate New Loan", "Submit Calculation",
-			"Submit Application", "Pass Gate Check", "Flag as Duplicate", "Resolve Duplicate"
+			"Submit Application", "Pass Gate Check", "Flag as Duplicate", "Resolve Duplicate",
+		"Fast Lane Approve"
 		]]],
 	},
 	{
@@ -60,7 +65,7 @@ fixtures = [
 	},
 	{
 		"dt": "Role",
-		"filters": [["name", "in", ["Lender Manager", "Lender Staff"]]],
+		"filters": [["name", "in", ["Lender Manager", "Lender Staff", "Borrower"]]],
 	},
 ]
 
@@ -75,6 +80,7 @@ doc_events = {
 	"Loan Application": {
 		"on_submit": "vila_kazi_lending.events.loan_application.on_submit",
 		"on_update": "vila_kazi_lending.events.loan_application.on_update",
+		"before_workflow_action": "vila_kazi_lending.events.loan_application.validate_fast_lane",
 	},
 	# ------------------------------------------------------------------
 	# Borrower Profile — on_update
