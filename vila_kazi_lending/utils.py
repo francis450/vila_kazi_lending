@@ -2,17 +2,6 @@
 Vila Kazi Lending — shared utility functions
 """
 
-# ---------------------------------------------------------------------------
-# Settings singleton accessor
-# ---------------------------------------------------------------------------
-
-
-def get_settings():
-	"""Return the VK Lending Settings singleton document."""
-	import frappe
-
-	return frappe.get_single("VK Lending Settings")
-
 from __future__ import annotations
 
 import calendar
@@ -21,25 +10,67 @@ from datetime import date, timedelta
 import frappe
 from frappe import _
 
+__all__ = [
+	"get_settings",
+	"get_payday_date",
+	"compute_max_eligible",
+	"check_auto_approval_gate",
+	"route_workflow",
+	"compute_refinancing_amounts",
+]
+
+
+# ---------------------------------------------------------------------------
+# Settings singleton accessor
+# ---------------------------------------------------------------------------
+
+
+def get_settings():
+	"""Return the VK Lending Settings singleton document."""
+	return frappe.get_single("VK Lending Settings")
+
 
 # ---------------------------------------------------------------------------
 # Payday resolution
 # ---------------------------------------------------------------------------
 
 
-def get_payday_date(bank: str, from_date: date | str) -> date | None:
-	"""
-	Return the next payday date for *bank* on or after *from_date*.
+def get_payday_date(bank: str, from_date: date | str) -> date:
+	"""Return the NEXT payday date for *bank* strictly after *from_date*.
 
-	Looks up the Payday Calendar for the bank, computes the canonical
-	payday day for the same month as *from_date*, then applies the
-	weekend_adjustment rule if it falls on a Saturday or Sunday.
+	If *from_date* falls exactly on the payday day, the FOLLOWING month's
+	payday is returned (i.e. the function always looks forward, never
+	returning the same day).
 
-	Returns None if no active Payday Calendar record exists for the bank.
+	Steps:
+	  1. Look up Payday Calendar for the bank.  Raises ValidationError if
+	     no record exists.
+	  2. Walk month-by-month (current then next) to find the first candidate
+	     date where day == payday_day and candidate > from_date.
+	  3. Clamp payday_day to the last valid day of the month (e.g. day=31 in
+	     February becomes the 28th/29th).
+	  4. Apply the weekend_adjustment rule:
+	     - Saturday + "Bring Forward"  → Friday (date − 1)
+	     - Saturday + "Push to Monday" → Monday (date + 2)
+	     - Sunday  + "Bring Forward"   → Friday (date − 2)
+	     - Sunday  + "Push to Monday"  → Monday (date + 1)
+	  5. If the adjustment crosses a month boundary (e.g. payday = 1st Sunday
+	     brought forward to Saturday 31st of prior month) the crossed-back
+	     date is returned as-is — the scheduler must NOT push it into the
+	     next month's cycle.
+
+	Args:
+	    bank: Name of the Bank document (links to Payday Calendar.bank_name).
+	    from_date: Start date as datetime.date or ISO string.
+
+	Returns:
+	    datetime.date – the resolved next payday.
+
+	Raises:
+	    frappe.ValidationError: If no Payday Calendar record exists for *bank*.
 	"""
 	if isinstance(from_date, str):
 		from frappe.utils import getdate
-
 		from_date = getdate(from_date)
 
 	record = frappe.db.get_value(
@@ -49,43 +80,65 @@ def get_payday_date(bank: str, from_date: date | str) -> date | None:
 		as_dict=True,
 	)
 	if not record:
-		return None
+		frappe.throw(
+			_("No active Payday Calendar found for bank '{0}'.").format(bank),
+			frappe.ValidationError,
+		)
 
 	payday_day: int = record.payday_day
 	adjustment: str = record.weekend_adjustment  # "Bring Forward" | "Push to Monday"
 
-	# Try payday in the same month as from_date first; if already past, go next month
-	for month_offset in (0, 1):
+	# Search the current month and up to two more to find a candidate
+	# strictly *after* from_date.  Two months is enough because the worst
+	# case is from_date == payday in the current month (skip → next month).
+	for month_offset in (0, 1, 2):
 		year = from_date.year
 		month = from_date.month + month_offset
 		if month > 12:
 			month -= 12
 			year += 1
 
-		# Clamp to last valid day of month (e.g. Feb 28/29 for day=31)
+		# Clamp to last valid calendar day of this month (handles day=31 in Feb, etc.)
 		last_day = calendar.monthrange(year, month)[1]
 		day = min(payday_day, last_day)
 		candidate = date(year, month, day)
 
-		if candidate >= from_date:
+		# Strictly greater — if from_date IS the payday, skip to next month
+		if candidate > from_date:
 			return _apply_weekend_adjustment(candidate, adjustment)
 
-	return None
+	# Should never reach here for reasonable payday_day values
+	frappe.throw(_("Could not resolve payday date for bank '{0}'.").format(bank))
 
 
 def _apply_weekend_adjustment(payday: date, rule: str) -> date:
-	"""Adjust a payday that falls on a weekend per the bank's rule."""
-	weekday = payday.weekday()  # 0=Mon … 5=Sat 6=Sun
+	"""Shift *payday* if it falls on a weekend per the bank's adjustment rule.
+
+	The returned date may cross a month boundary (e.g. payday=1st Sunday
+	brought forward to Saturday 31st of the prior month).  Callers must
+	accept cross-month results — do NOT re-resolve into the next cycle.
+
+	Args:
+	    payday: The raw calendar payday (may be a weekend).
+	    rule: "Bring Forward" or "Push to Monday".
+
+	Returns:
+	    datetime.date – adjusted date (unchanged if payday was a weekday).
+	"""
+	weekday = payday.weekday()  # 0=Mon … 4=Fri, 5=Sat, 6=Sun
+
 	if weekday == 5:  # Saturday
 		if rule == "Bring Forward":
-			return payday - timedelta(days=1)  # Friday
-		else:  # Push to Monday
-			return payday + timedelta(days=2)
+			return payday - timedelta(days=1)   # → Friday
+		else:  # "Push to Monday"
+			return payday + timedelta(days=2)   # → Monday
+
 	if weekday == 6:  # Sunday
 		if rule == "Bring Forward":
-			return payday - timedelta(days=2)  # Friday
-		else:  # Push to Monday
-			return payday + timedelta(days=1)
+			return payday - timedelta(days=2)   # → Friday
+		else:  # "Push to Monday"
+			return payday + timedelta(days=1)   # → Monday
+
 	return payday  # Weekday — no adjustment needed
 
 
@@ -95,82 +148,220 @@ def _apply_weekend_adjustment(payday: date, rule: str) -> date:
 
 
 def compute_max_eligible(net_salary: float, existing_liabilities: float = 0.0) -> float:
-	"""Return the maximum eligible loan amount: (net_salary × 0.50) − liabilities."""
-	return max(0.0, (net_salary or 0.0) * 0.50 - (existing_liabilities or 0.0))
+	"""Return the maximum loan amount a borrower is eligible for.
+
+	Formula:
+	    max_eligible = (net_salary × ratio) − existing_liabilities
+
+	The ratio is read from VK Lending Settings.max_loan_to_salary_ratio
+	(default 0.5 if the settings document does not have the field set).
+
+	The result is floored at 0 — it will never be negative.
+
+	Args:
+	    net_salary: Borrower's verified net monthly salary (KES).
+	    existing_liabilities: Total existing monthly debt obligations (KES).
+	                          Defaults to 0.
+
+	Returns:
+	    float – maximum eligible loan amount, >= 0.
+	"""
+	# Read configurable ratio from settings; fall back to 0.5 if unset
+	ratio = (
+		frappe.db.get_single_value("VK Lending Settings", "max_loan_to_salary_ratio")
+		or 0.5
+	)
+	result = (net_salary or 0.0) * ratio - (existing_liabilities or 0.0)
+	return max(0.0, result)
 
 
 # ---------------------------------------------------------------------------
-# Auto-approval gate
+# Auto-approval gate (fast-lane eligibility)
 # ---------------------------------------------------------------------------
 
 
-def check_auto_approval_gate(loan_application_name: str) -> bool:
-	"""
-	Evaluate all three auto-approval gate conditions (spec D2).
+def check_auto_approval_gate(loan_application_name: str) -> dict:
+	"""Evaluate fast-lane eligibility for a Loan Application.
 
-	Returns True only if ALL conditions pass.  Never auto-rejects —
-	failures route to manual review.
+	All FOUR conditions must pass for fast-lane approval.  The function
+	never raises; failures are accumulated in `failed_conditions`.
 
-	Condition 1: Borrower's active Framework Agreement status == 'Active'
-	Condition 2: Requested amount ≤ max_eligible_amount
-	Condition 3: Last 3 closed loans all have Repayment Reconciliation
-	             status = 'Received' and received_date ≤ expected_date
+	Condition 1 — Active Framework Agreement:
+	    Loan Application → applicant (Customer) → Borrower Profile →
+	    framework_agreement → Loan Framework Agreement.status == "Active".
+	    Fail: "No active Framework Agreement on file."
+
+	Condition 2 — Within eligible amount:
+	    loan_application.loan_amount <=
+	    compute_max_eligible(borrower_profile.net_salary,
+	                         borrower_profile.existing_liabilities [default 0]).
+	    Fail: "Requested amount KES {x} exceeds eligible limit KES {y}."
+
+	Condition 3 — Repayment history (last 3 closed loans):
+	    For each Loan (status in ["Repaid", "Closed"]) belonging to the
+	    borrower, the linked Repayment Reconciliation must have
+	    received_date <= expected_date.  At least 1 closed loan is required.
+	    Fail: "Repayment history check failed: {n} of last {total} loans were late."
+
+	Condition 4 — Watch category block:
+	    If Borrower Profile.credit_category == "Watch", always fail.
+	    Fail: "Borrower is on Watch category — manual review required."
+
+	Args:
+	    loan_application_name: The `name` of the Loan Application document.
+
+	Returns:
+	    dict with keys:
+	        "passed"            – bool, True only if ALL conditions pass.
+	        "failed_conditions" – list[str], empty when passed=True.
 	"""
+	failed: list[str] = []
+
+	# ── Load Loan Application ──────────────────────────────────────────────
 	app = frappe.db.get_value(
 		"Loan Application",
 		loan_application_name,
-		[
-			"applicant",
-			"loan_amount",
-			"vk_max_eligible_amount",
-			"vk_framework_agreement",
-		],
+		["applicant", "loan_amount"],
 		as_dict=True,
 	)
 	if not app:
-		return False
+		return {
+			"passed": False,
+			"failed_conditions": [f"Loan Application '{loan_application_name}' not found."],
+		}
 
-	# --- Gate 1: Active Framework Agreement ---
-	if not app.vk_framework_agreement:
-		return False
-	fa_status = frappe.db.get_value(
-		"Loan Framework Agreement", app.vk_framework_agreement, "status"
-	)
-	if fa_status != "Active":
-		return False
-
-	# --- Gate 2: Within eligible limit ---
-	requested = app.loan_amount or 0.0
-	max_eligible = app.vk_max_eligible_amount or 0.0
-	if requested > max_eligible:
-		return False
-
-	# --- Gate 3: Last 3 closed loans on time ---
-	last_three = frappe.db.sql(
-		"""
-		SELECT rr.status, rr.received_date, rr.expected_date
-		FROM `tabRepayment Reconciliation` rr
-		JOIN `tabLoan` l ON l.name = rr.loan
-		WHERE rr.borrower = %s
-		  AND rr.status IN ('Received', 'Partial', 'Overdue')
-		ORDER BY rr.expected_date DESC
-		LIMIT 3
-		""",
+	# ── Load Borrower Profile (name == customer field value) ───────────────
+	bp = frappe.db.get_value(
+		"Borrower Profile",
 		app.applicant,
+		["framework_agreement", "net_salary", "credit_category"],
 		as_dict=True,
 	)
+	if not bp:
+		return {
+			"passed": False,
+			"failed_conditions": [
+				f"No Borrower Profile found for customer '{app.applicant}'."
+			],
+		}
 
-	if not last_three:
-		# No repayment history — not eligible for auto-approval
-		return False
+	# ── Condition 4: Watch category block (checked first — hard stop) ──────
+	if bp.credit_category == "Watch":
+		failed.append("Borrower is on Watch category — manual review required.")
 
-	for rec in last_three:
-		if rec.status != "Received":
-			return False
-		if rec.received_date and rec.expected_date and rec.received_date > rec.expected_date:
-			return False
+	# ── Condition 1: Active Framework Agreement ────────────────────────────
+	fa_active = False
+	if bp.framework_agreement:
+		fa_status = frappe.db.get_value(
+			"Loan Framework Agreement", bp.framework_agreement, "status"
+		)
+		fa_active = fa_status == "Active"
 
-	return True
+	if not fa_active:
+		failed.append("No active Framework Agreement on file.")
+
+	# ── Condition 2: Requested amount within eligible limit ────────────────
+	# Borrower Profile has no existing_liabilities field yet; default to 0
+	existing_liabilities = getattr(bp, "existing_liabilities", None) or 0.0
+	max_eligible = compute_max_eligible(bp.net_salary or 0.0, existing_liabilities)
+	requested = app.loan_amount or 0.0
+
+	if requested > max_eligible:
+		failed.append(
+			"Requested amount KES {0} exceeds eligible limit KES {1}.".format(
+				frappe.utils.fmt_money(requested, currency="KES"),
+				frappe.utils.fmt_money(max_eligible, currency="KES"),
+			)
+		)
+
+	# ── Condition 3: Repayment history on last 3 closed loans ─────────────
+	closed_loans = frappe.db.get_all(
+		"Loan",
+		filters={
+			"applicant": app.applicant,
+			"status": ["in", ["Repaid", "Closed", "Written Off"]],
+		},
+		fields=["name"],
+		order_by="creation desc",
+		limit=3,
+	)
+
+	if not closed_loans:
+		# No closed loan history — not eligible for fast lane
+		failed.append(
+			"Repayment history check failed: no closed loans on record."
+		)
+	else:
+		late_count = 0
+		total = len(closed_loans)
+
+		for loan_rec in closed_loans:
+			rr = frappe.db.get_value(
+				"Repayment Reconciliation",
+				{"loan": loan_rec.name},
+				["received_date", "expected_date"],
+				as_dict=True,
+			)
+			# Missing RR or missing dates are treated as late
+			if not rr or not rr.received_date or not rr.expected_date:
+				late_count += 1
+				continue
+			if rr.received_date > rr.expected_date:
+				late_count += 1
+
+		if late_count > 0:
+			failed.append(
+				"Repayment history check failed: {0} of last {1} loans were late.".format(
+					late_count, total
+				)
+			)
+
+	return {"passed": len(failed) == 0, "failed_conditions": failed}
+
+
+# ---------------------------------------------------------------------------
+# Workflow routing helper
+# ---------------------------------------------------------------------------
+
+
+def route_workflow(doc) -> None:
+	"""Set the correct initial vk_loan_stage on a Loan Application before submit.
+
+	Called from the `before_submit` hook on Loan Application.  Sets the
+	`vk_is_repeat_borrower` flag and determines which workflow entry point
+	the application should start at:
+
+	  - Refinancing:     vk_is_refinancing == 1 → stage "Refinancing Requested"
+	  - Repeat borrower: verified Borrower Profile exists for applicant
+	                     → vk_is_repeat_borrower = 1, stage "Intake"
+	  - New borrower:    no Borrower Profile → vk_is_repeat_borrower = 0,
+	                     stage "Draft"
+
+	The function mutates *doc* in-place; it does not call doc.save().
+
+	Args:
+	    doc: The Loan Application document object (frappe.Document).
+	"""
+	# --- Refinancing takes precedence over everything else ---
+	if doc.get("vk_is_refinancing"):
+		doc.vk_loan_stage = "Refinancing Requested"
+		return
+
+	# --- Check for an existing verified Borrower Profile ---
+	bp_exists = frappe.db.get_value(
+		"Borrower Profile",
+		{"customer": doc.applicant, "kyc_status": "Verified"},
+		"name",
+	)
+
+	if bp_exists:
+		# Returning borrower with a verified KYC profile — fast track to Intake
+		doc.vk_is_repeat_borrower = 1
+		doc.vk_loan_stage = "Intake"
+	else:
+		# First-time or unverified borrower — start at Draft for KYC processing
+		doc.vk_is_repeat_borrower = 0
+		doc.vk_loan_stage = "Draft"
 
 
 # ---------------------------------------------------------------------------
@@ -179,17 +370,27 @@ def check_auto_approval_gate(loan_application_name: str) -> bool:
 
 
 def compute_refinancing_amounts(loan_application_name: str) -> dict:
-	"""
-	WF-03: Compute refinancing principal and net disbursement amounts.
+	"""Compute refinancing principal and net disbursement amounts.
 
-	Responsibility of this function (Amendment 2 safe sequence):
-	  - Compute outstanding_balance, new_loan_principal, net_disbursement
-	  - Validate against eligibility ceiling (throws if exceeded)
-	  - Update loan_amount and vk_loan_stage on the Loan Application
-	  - Does NOT close the original loan — that happens post-disbursement
-	    in events/loan_disbursement_source.py
+	WF-03 (Amendment 2 safe sequence):
+	  - Derives outstanding_balance, new_loan_principal, and net_disbursement.
+	  - Validates the new principal against the eligibility ceiling; throws
+	    frappe.ValidationError if exceeded.
+	  - Writes loan_amount and vk_loan_stage = "Pending Disbursement" onto
+	    the Loan Application via db.set_value.
+	  - Does NOT close the original loan — that is handled post-disbursement
+	    in events/loan_disbursement_source.py.
 
-	Returns a dict with: outstanding_balance, new_loan_principal, net_disbursement.
+	Args:
+	    loan_application_name: Name of the Loan Application document.
+
+	Returns:
+	    dict with keys: outstanding_balance, new_loan_principal, net_disbursement.
+
+	Raises:
+	    frappe.ValidationError: If the loan application or its linked data
+	                            cannot be found, or if the new principal
+	                            exceeds the eligible ceiling.
 	"""
 	app = frappe.db.get_value(
 		"Loan Application",
@@ -227,7 +428,7 @@ def compute_refinancing_amounts(loan_application_name: str) -> dict:
 	outstanding_balance = (rr.expected_amount or 0) - (rr.received_amount or 0)
 	top_up = app.vk_top_up_amount or 0
 	new_loan_principal = outstanding_balance + top_up
-	net_disbursement = top_up  # Only the top-up is actual cash; outstanding is a book entry
+	net_disbursement = top_up  # Only the top-up is disbursed as cash
 
 	# Validate against eligibility ceiling
 	max_eligible = app.vk_max_eligible_amount or compute_max_eligible(
@@ -244,7 +445,7 @@ def compute_refinancing_amounts(loan_application_name: str) -> dict:
 			)
 		)
 
-	# Update the Loan Application — advance to Pending Disbursement
+	# Advance the application stage
 	frappe.db.set_value(
 		"Loan Application",
 		loan_application_name,
