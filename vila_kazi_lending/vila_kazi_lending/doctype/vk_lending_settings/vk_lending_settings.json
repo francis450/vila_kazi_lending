@@ -3,10 +3,92 @@
  "module": "Vila Kazi Lending",
  "name": "VK Lending Settings",
  "issingle": 1,
- "track_changes": 1,
+ "track_changes": 0,
+ "field_order": [
+  "loan_rules_section",
+  "security_fee_percentage",
+  "max_loan_to_salary_ratio",
+  "accrual_cap_multiplier",
+  "collections_section",
+  "overdue_alert_day_3",
+  "overdue_alert_day_7",
+  "weekly_digest_enabled",
+  "last_weekly_digest_sent",
+  "paybill_section",
+  "paybill_number",
+  "paybill_account_ref_prefix",
+  "notification_section",
+  "lender_notification_email",
+  "last_overdue_digest_sent",
+  "ai_scoring_section",
+  "score_approve_threshold",
+  "score_review_threshold",
+  "gambling_income_ratio_limit",
+  "competing_loan_burden_limit",
+  "api_keys_section",
+  "llm_api_key",
+  "africastalking_api_key",
+  "africastalking_sender_id",
+  "daraja_consumer_key",
+  "daraja_consumer_secret",
+  "gambling_keywords_section",
+  "gambling_keywords"
+ ],
  "fields": [
   {
-   "fieldname": "loan_settings_section",
+   "fieldname": "loan_rules_section",
+   "fieldtype": "Section Break",
+   "label": "Loan Rules"
+  },
+  {
+   "fieldname": "security_fee_percentage",
+   "fieldtype": "Float",
+   "label": "Security Fee (%)",
+   "default": "5"
+  },
+  {
+   "fieldname": "max_loan_to_salary_ratio",
+   "fieldtype": "Float",
+   "label": "Max Loan : Salary Ratio",
+   "default": "0.5"
+  },
+  {
+   "fieldname": "accrual_cap_multiplier",
+   "fieldtype": "Float",
+   "label": "Accrual Cap Multiplier",
+   "default": "2.0"
+  },
+  {
+   "fieldname": "collections_section",
+   "fieldtype": "Section Break",
+   "label": "Collections"
+  },
+  {
+   "fieldname": "overdue_alert_day_3",
+   "fieldtype": "Check",
+   "label": "Alert Lender at Day 3",
+   "default": "1"
+  },
+  {
+   "fieldname": "overdue_alert_day_7",
+   "fieldtype": "Check",
+   "label": "Alert Lender at Day 7",
+   "default": "1"
+  },
+  {
+   "fieldname": "weekly_digest_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Weekly Overdue Digest",
+   "default": "1"
+  },
+  {
+   "fieldname": "last_weekly_digest_sent",
+   "fieldtype": "Date",
+   "label": "Last Weekly Digest Sent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paybill_section",
    "fieldtype": "Section Break",
    "label": "Paybill & Repayment"
   },
@@ -34,16 +116,81 @@
    "description": "If set, all internal notifications go here instead of all Lender Manager users."
   },
   {
-   "fieldname": "digest_section",
-   "fieldtype": "Section Break",
-   "label": "Overdue Digest"
-  },
-  {
    "fieldname": "last_overdue_digest_sent",
    "fieldtype": "Date",
    "label": "Last Overdue Digest Sent",
    "read_only": 1,
    "description": "Automatically updated by the daily scheduler. Reset manually to re-send the digest."
+  },
+  {
+   "fieldname": "ai_scoring_section",
+   "fieldtype": "Section Break",
+   "label": "AI Scoring Thresholds (Phase 2)"
+  },
+  {
+   "fieldname": "score_approve_threshold",
+   "fieldtype": "Float",
+   "label": "Auto-Approve Score Threshold",
+   "default": "70"
+  },
+  {
+   "fieldname": "score_review_threshold",
+   "fieldtype": "Float",
+   "label": "Manual Review Score Threshold",
+   "default": "50"
+  },
+  {
+   "fieldname": "gambling_income_ratio_limit",
+   "fieldtype": "Float",
+   "label": "Gambling : Income Limit",
+   "default": "0.10"
+  },
+  {
+   "fieldname": "competing_loan_burden_limit",
+   "fieldtype": "Float",
+   "label": "Competing Loan Burden Limit",
+   "default": "0.30"
+  },
+  {
+   "fieldname": "api_keys_section",
+   "fieldtype": "Section Break",
+   "label": "API Keys (Phase 2)"
+  },
+  {
+   "fieldname": "llm_api_key",
+   "fieldtype": "Password",
+   "label": "LLM API Key"
+  },
+  {
+   "fieldname": "africastalking_api_key",
+   "fieldtype": "Password",
+   "label": "Africa's Talking API Key"
+  },
+  {
+   "fieldname": "africastalking_sender_id",
+   "fieldtype": "Data",
+   "label": "Africa's Talking Sender ID"
+  },
+  {
+   "fieldname": "daraja_consumer_key",
+   "fieldtype": "Password",
+   "label": "Daraja Consumer Key"
+  },
+  {
+   "fieldname": "daraja_consumer_secret",
+   "fieldtype": "Password",
+   "label": "Daraja Consumer Secret"
+  },
+  {
+   "fieldname": "gambling_keywords_section",
+   "fieldtype": "Section Break",
+   "label": "M-Pesa Gambling Keywords"
+  },
+  {
+   "fieldname": "gambling_keywords",
+   "fieldtype": "Small Text",
+   "label": "Gambling Platform Keywords (comma-separated)",
+   "default": "SportPesa,Odibets,Betika,Betway,Mozzart Bet"
   }
  ],
  "permissions": [

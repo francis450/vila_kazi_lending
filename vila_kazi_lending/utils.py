@@ -2,6 +2,17 @@
 Vila Kazi Lending — shared utility functions
 """
 
+# ---------------------------------------------------------------------------
+# Settings singleton accessor
+# ---------------------------------------------------------------------------
+
+
+def get_settings():
+	"""Return the VK Lending Settings singleton document."""
+	import frappe
+
+	return frappe.get_single("VK Lending Settings")
+
 from __future__ import annotations
 
 import calendar

@@ -67,6 +67,17 @@ fixtures = [
 		"dt": "Role",
 		"filters": [["name", "in", ["Lender Manager", "Lender Staff", "Borrower"]]],
 	},
+	{
+		"dt": "Custom DocPerm",
+		"filters": [
+			["parent", "in", [
+				"Loan Application", "Loan", "Borrower Profile", "Loan Framework Agreement",
+				"Repayment Reconciliation", "Loan Disbursement Source", "Loan Appraisal",
+				"Payday Calendar", "VK Lending Settings"
+			]],
+			["role", "in", ["Lender Manager", "Lender Staff", "Borrower"]],
+		],
+	},
 ]
 
 # ---------------------------------------------------------------------------

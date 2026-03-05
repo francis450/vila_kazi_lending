@@ -1,0 +1,5 @@
+[
+ {"doctype": "Role", "name": "Lender Manager", "role_name": "Lender Manager", "desk_access": 1, "is_custom": 1},
+ {"doctype": "Role", "name": "Lender Staff",   "role_name": "Lender Staff",   "desk_access": 1, "is_custom": 1},
+ {"doctype": "Role", "name": "Borrower",        "role_name": "Borrower",        "desk_access": 0, "is_custom": 1}
+]
