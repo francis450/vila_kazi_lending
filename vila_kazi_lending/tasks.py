@@ -24,9 +24,26 @@ def parse_mpesa_statement(doc_name: str) -> None:
 	try:
 		doc = frappe.get_doc("M-Pesa Statement", doc_name)
 
+		if not doc.statement_file:
+			raise ValueError("No file attached to this M-Pesa Statement.")
+
 		from vila_kazi_lending.mpesa_parser import parse
 
 		results = parse(doc.statement_file, doc.period_from, doc.period_to)
+
+		# Guard: reject statements with too few transactions to be meaningful
+		import json as _json
+		n_tx = len(_json.loads(results.get("parsed_transactions", "[]")))
+		if n_tx < 10:
+			frappe.db.set_value(
+				"M-Pesa Statement",
+				doc_name,
+				{
+					"parse_status": "Failed",
+					"parse_error_log": f"Insufficient data: only {n_tx} transactions extracted",
+				},
+			)
+			return
 
 		# Write all scalar metrics in one SQL round-trip
 		frappe.db.set_value(
