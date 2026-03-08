@@ -67,17 +67,17 @@ def _evaluate_and_route(doc):
 		stmt = frappe.db.get_value(
 			"M-Pesa Statement",
 			doc.mpesa_statement,
-			["competing_loan_repayments", "monthly_avg_inflow", "cashflow_trend"],
+			["loan_repayments_detected", "monthly_avg_inflow", "net_cashflow_trend"],
 			as_dict=True,
 		)
 		if stmt:
 			if (stmt.monthly_avg_inflow or 0) > 0:
-				competing_ratio = (stmt.competing_loan_repayments or 0) / stmt.monthly_avg_inflow
+				competing_ratio = (stmt.loan_repayments_detected or 0) / stmt.monthly_avg_inflow
 				if competing_ratio > 0.30:
 					soft_triggers.append(
 						f"Competing loan repayments exceed 30% of income ({competing_ratio * 100:.1f}%)."
 					)
-			if stmt.cashflow_trend == "Declining":
+			if stmt.net_cashflow_trend == "Declining":
 				soft_triggers.append("Cashflow trend is Declining.")
 
 		if soft_triggers:

@@ -17,5 +17,9 @@ class MPesaStatement(Document):
 				"vila_kazi_lending.tasks.parse_mpesa_statement",
 				doc_name=self.name,
 				queue="long",
+				# enqueue_after_commit=True prevents the race condition where the
+				# background worker picks up the job before this transaction commits
+				# and frappe.get_doc() fails with "not found".
+				enqueue_after_commit=True,
 				now=frappe.flags.in_test,
 			)

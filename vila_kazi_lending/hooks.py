@@ -87,10 +87,13 @@ fixtures = [
 doc_events = {
 	# ------------------------------------------------------------------
 	# Loan Application — on_submit + on_update (stage-change notifications)
+	# + on_update_after_submit (PDF generation on Approved, RR on Disbursed)
 	# ------------------------------------------------------------------
 	"Loan Application": {
+		"before_submit": "vila_kazi_lending.events.loan_application.before_submit",
 		"on_submit": "vila_kazi_lending.events.loan_application.on_submit",
 		"on_update": "vila_kazi_lending.events.loan_application.on_update",
+		"on_update_after_submit": "vila_kazi_lending.events.loan_application.on_update_after_submit",
 		"before_workflow_action": "vila_kazi_lending.events.loan_application.validate_fast_lane",
 	},
 	# ------------------------------------------------------------------

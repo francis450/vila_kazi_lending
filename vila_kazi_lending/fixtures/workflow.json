@@ -39,21 +39,28 @@
     "action": "Submit Application",
     "next_state": "Intake",
     "allowed": "Lender Staff",
-    "allow_self_approval": 0
+    "allow_self_approval": 1
    },
    {
     "state": "Draft",
     "action": "Submit Application",
     "next_state": "Intake",
     "allowed": "Lender Manager",
-    "allow_self_approval": 0
+    "allow_self_approval": 1
    },
    {
     "state": "Draft",
     "action": "Submit Application",
     "next_state": "Intake",
     "allowed": "Borrower",
-    "allow_self_approval": 0
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Draft",
+    "action": "Submit Application",
+    "next_state": "Intake",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Intake",
@@ -68,6 +75,13 @@
     "next_state": "Pending KYC Verification",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "Intake",
+    "action": "Submit for KYC",
+    "next_state": "Pending KYC Verification",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Intake",
@@ -98,6 +112,34 @@
     "next_state": "Gate Check",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "Pending KYC Verification",
+    "action": "Mark KYC Verified",
+    "next_state": "Gate Check",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Pending KYC Verification",
+    "action": "Mark KYC Rejected",
+    "next_state": "Draft",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending KYC Verification",
+    "action": "Mark KYC Rejected",
+    "next_state": "Draft",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending KYC Verification",
+    "action": "Mark KYC Rejected",
+    "next_state": "Draft",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Gate Check",
@@ -122,24 +164,80 @@
    },
    {
     "state": "Duplicate - Review",
+    "action": "Resolve Duplicate",
+    "next_state": "Pending Appraisal",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Duplicate - Review",
     "action": "Decline",
     "next_state": "Declined",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
    },
    {
-    "state": "Pending KYC Verification",
-    "action": "Mark KYC Rejected",
-    "next_state": "Draft",
+    "state": "Duplicate - Review",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Complete Appraisal",
+    "next_state": "Appraisal Complete",
     "allowed": "Lender Staff",
     "allow_self_approval": 0
    },
    {
-    "state": "Pending KYC Verification",
-    "action": "Mark KYC Rejected",
-    "next_state": "Draft",
+    "state": "Pending Appraisal",
+    "action": "Complete Appraisal",
+    "next_state": "Appraisal Complete",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Complete Appraisal",
+    "next_state": "Appraisal Complete",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Route to Standard Review",
+    "next_state": "Standard Review",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Route to Standard Review",
+    "next_state": "Standard Review",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Route to Standard Review",
+    "next_state": "Standard Review",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Flag for Review",
+    "next_state": "Review Required",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Pending Appraisal",
+    "action": "Flag for Review",
+    "next_state": "Review Required",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Appraisal Complete",
@@ -150,10 +248,24 @@
    },
    {
     "state": "Appraisal Complete",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Appraisal Complete",
     "action": "Decline",
     "next_state": "Declined",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "Appraisal Complete",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Review Required",
@@ -165,10 +277,25 @@
    },
    {
     "state": "Review Required",
+    "action": "Override Approve",
+    "next_state": "Approved",
+    "allowed": "System Manager",
+    "allow_self_approval": 1,
+    "condition": "doc.vk_decision_notes != \"\""
+   },
+   {
+    "state": "Review Required",
     "action": "Decline",
     "next_state": "Declined",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "Review Required",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Standard Review",
@@ -179,10 +306,59 @@
    },
    {
     "state": "Standard Review",
+    "action": "Approve",
+    "next_state": "Approved",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Standard Review",
     "action": "Decline",
     "next_state": "Declined",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "Standard Review",
+    "action": "Decline",
+    "next_state": "Declined",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Approved",
+    "action": "Send Agreement",
+    "next_state": "Pending Agreement Signing",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Approved",
+    "action": "Send Agreement",
+    "next_state": "Pending Agreement Signing",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Approved",
+    "action": "Send Agreement",
+    "next_state": "Pending Agreement Signing",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Approved",
+    "action": "Send for Lender Confirmation",
+    "next_state": "Pending Lender Confirm",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Approved",
+    "action": "Send for Lender Confirmation",
+    "next_state": "Pending Lender Confirm",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Pending Lender Confirm",
@@ -193,24 +369,24 @@
    },
    {
     "state": "Pending Lender Confirm",
+    "action": "Confirm",
+    "next_state": "Confirmed for Disbursement",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Pending Lender Confirm",
     "action": "Decline",
     "next_state": "Declined",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
    },
    {
-    "state": "Lender Review",
-    "action": "Approve Refinancing",
-    "next_state": "Refinancing Approved",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Lender Review",
+    "state": "Pending Lender Confirm",
     "action": "Decline",
-    "next_state": "Refinancing Declined",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
+    "next_state": "Declined",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Pending Agreement Signing",
@@ -234,6 +410,48 @@
     "allow_self_approval": 0
    },
    {
+    "state": "Pending Agreement Signing",
+    "action": "Mark Agreement Signed",
+    "next_state": "Agreement Signed",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Agreement Signed",
+    "action": "Request Disbursement",
+    "next_state": "Pending Disbursement",
+    "allowed": "Lender Staff",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Agreement Signed",
+    "action": "Request Disbursement",
+    "next_state": "Pending Disbursement",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Agreement Signed",
+    "action": "Request Disbursement",
+    "next_state": "Pending Disbursement",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Confirmed for Disbursement",
+    "action": "Initiate Disbursement",
+    "next_state": "Pending Disbursement",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Confirmed for Disbursement",
+    "action": "Initiate Disbursement",
+    "next_state": "Pending Disbursement",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
     "state": "Pending Disbursement",
     "action": "Confirm Disbursement",
     "next_state": "Disbursed",
@@ -241,46 +459,11 @@
     "allow_self_approval": 0
    },
    {
-    "state": "Pending Appraisal",
-    "action": "Complete Appraisal",
-    "next_state": "Appraisal Complete",
-    "allowed": "Lender Staff",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Pending Appraisal",
-    "action": "Complete Appraisal",
-    "next_state": "Appraisal Complete",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Approved",
-    "action": "Send Agreement",
-    "next_state": "Pending Agreement Signing",
-    "allowed": "Lender Staff",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Approved",
-    "action": "Send Agreement",
-    "next_state": "Pending Agreement Signing",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Agreement Signed",
-    "action": "Request Disbursement",
-    "next_state": "Pending Disbursement",
-    "allowed": "Lender Staff",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Agreement Signed",
-    "action": "Request Disbursement",
-    "next_state": "Pending Disbursement",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
+    "state": "Pending Disbursement",
+    "action": "Confirm Disbursement",
+    "next_state": "Disbursed",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Disbursed",
@@ -297,41 +480,6 @@
     "allow_self_approval": 0
    },
    {
-    "state": "Confirmed for Disbursement",
-    "action": "Initiate Disbursement",
-    "next_state": "Pending Disbursement",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Pending Appraisal",
-    "action": "Route to Standard Review",
-    "next_state": "Standard Review",
-    "allowed": "Lender Staff",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Pending Appraisal",
-    "action": "Route to Standard Review",
-    "next_state": "Standard Review",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Pending Appraisal",
-    "action": "Flag for Review",
-    "next_state": "Review Required",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
-   },
-   {
-    "state": "Approved",
-    "action": "Send for Lender Confirmation",
-    "next_state": "Pending Lender Confirm",
-    "allowed": "Lender Manager",
-    "allow_self_approval": 0
-   },
-   {
     "state": "Active",
     "action": "Request Refinancing",
     "next_state": "Refinancing Requested",
@@ -346,11 +494,46 @@
     "allow_self_approval": 0
    },
    {
+    "state": "Lender Review",
+    "action": "Approve Refinancing",
+    "next_state": "Refinancing Approved",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Lender Review",
+    "action": "Approve Refinancing",
+    "next_state": "Refinancing Approved",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
+    "state": "Lender Review",
+    "action": "Decline",
+    "next_state": "Refinancing Declined",
+    "allowed": "Lender Manager",
+    "allow_self_approval": 0
+   },
+   {
+    "state": "Lender Review",
+    "action": "Decline",
+    "next_state": "Refinancing Declined",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
     "state": "Refinancing Requested",
     "action": "Submit for Lender Review",
     "next_state": "Lender Review",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "Refinancing Requested",
+    "action": "Submit for Lender Review",
+    "next_state": "Lender Review",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    },
    {
     "state": "Refinancing Approved",
@@ -360,11 +543,25 @@
     "allow_self_approval": 0
    },
    {
+    "state": "Refinancing Approved",
+    "action": "Calculate New Loan",
+    "next_state": "New Loan Calculation",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
+   },
+   {
     "state": "New Loan Calculation",
     "action": "Submit Calculation",
     "next_state": "Pending Lender Confirm",
     "allowed": "Lender Manager",
     "allow_self_approval": 0
+   },
+   {
+    "state": "New Loan Calculation",
+    "action": "Submit Calculation",
+    "next_state": "Pending Lender Confirm",
+    "allowed": "System Manager",
+    "allow_self_approval": 1
    }
   ]
  },

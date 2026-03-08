@@ -4,10 +4,8 @@
 frappe.ui.form.on("Loan Application", {
 	refresh(frm) {
 		frm.trigger("toggle_refinancing_fields");
-		if (frm.doc.docstatus === 1) {
-			frm.trigger("show_workflow_actions");
-			frm.trigger("show_confirm_card");
-		}
+		frm.trigger("show_workflow_actions");
+		frm.trigger("show_confirm_card");
 	},
 
 	// ---------------------------------------------------------------------------
@@ -60,8 +58,20 @@ frappe.ui.form.on("Loan Application", {
 	show_workflow_actions(frm) {
 		frm.clear_custom_buttons();
 		const stage = frm.doc.vk_loan_stage;
-		const isManager = frappe.user.has_role("Lender Manager");
-		const isStaff = frappe.user.has_role("Lender Staff");
+		const isSysAdmin = frappe.user.has_role("System Manager");
+		const isManager = frappe.user.has_role("Lender Manager") || isSysAdmin;
+		const isStaff = frappe.user.has_role("Lender Staff") || isSysAdmin;
+
+		// --- Unsaved / draft document (docstatus=0): show Submit Application ---
+		if (frm.doc.docstatus === 0 && !frm.doc.__islocal) {
+			frm.add_custom_button(__("Submit Application"), () => {
+				frappe.confirm(
+					__("Submit this loan application and start the review workflow?"),
+					() => frm.savesubmit()
+				);
+			}).css({ "background-color": "#1565C0", "color": "white", "font-weight": "bold" });
+			return;
+		}
 
 		if (!stage) return;
 
@@ -74,6 +84,19 @@ frappe.ui.form.on("Loan Application", {
 					callback() { frm.reload_doc(); },
 				});
 			}, __("Workflow"));
+		}
+
+		// --- Intake: repeat-borrower holding state (shown when gate check pends/failed) ---
+		if (stage === "Intake" && (isManager || isStaff)) {
+			frm.add_custom_button(__("Submit for KYC"), () => {
+				frappe.confirm(__("Submit this application for KYC verification?"), () =>
+					frappe.call({
+						method: "vila_kazi_lending.api.set_loan_stage",
+						args: { docname: frm.doc.name, stage: "Pending KYC Verification" },
+						callback() { frm.reload_doc(); },
+					})
+				);
+			}).css({ "background-color": "#1565C0", "color": "white", "font-weight": "bold" });
 		}
 
 		if (stage === "Pending KYC Verification" && (isManager || isStaff)) {
@@ -197,7 +220,7 @@ frappe.ui.form.on("Loan Application", {
 
 	show_confirm_card(frm) {
 		if (frm.doc.vk_loan_stage !== "Pending Lender Confirm") return;
-		if (!frappe.user.has_role("Lender Manager")) return;
+		if (!frappe.user.has_role("Lender Manager") && !frappe.user.has_role("System Manager")) return;
 
 		// Load borrower profile data for the card
 		frappe.call({

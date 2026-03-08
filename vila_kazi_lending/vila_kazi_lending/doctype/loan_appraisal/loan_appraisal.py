@@ -48,12 +48,6 @@ class LoanAppraisal(Document):
 		self.auto_approved = 1 if auto_approved else 0
 		self.appraisal_date = now_datetime()
 		self.save(ignore_permissions=True)
-
-		# If auto-approved, push status back to the Loan Application
-		if self.auto_approved and self.loan_application:
-			frappe.db.set_value(
-				"Loan Application",
-				self.loan_application,
-				"status",
-				"Approved",
-			)
+		# Note: the on_update event in events/loan_appraisal.py will pick up the
+		# recommendation change, apply hard/soft rules, and advance vk_loan_stage
+		# on the linked Loan Application. No direct set_value needed here.

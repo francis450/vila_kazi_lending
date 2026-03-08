@@ -1,6 +1,56 @@
 [
  {
   "doctype": "Custom Field",
+  "name": "Loan Application-vk_tab_borrower",
+  "dt": "Loan Application",
+  "fieldname": "vk_tab_borrower",
+  "fieldtype": "Tab Break",
+  "label": "Borrower",
+  "insert_after": "workflow_state",
+  "module": "Vila Kazi Lending"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Loan Application-vk_tab_loan",
+  "dt": "Loan Application",
+  "fieldname": "vk_tab_loan",
+  "fieldtype": "Tab Break",
+  "label": "Loan",
+  "insert_after": "co_applicants",
+  "module": "Vila Kazi Lending"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Loan Application-vk_tab_review",
+  "dt": "Loan Application",
+  "fieldname": "vk_tab_review",
+  "fieldtype": "Tab Break",
+  "label": "Review",
+  "insert_after": "vk_payday_date",
+  "module": "Vila Kazi Lending"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Loan Application-vk_tab_underwriting",
+  "dt": "Loan Application",
+  "fieldname": "vk_tab_underwriting",
+  "fieldtype": "Tab Break",
+  "label": "Underwriting",
+  "insert_after": "vk_clean_repayment_history",
+  "module": "Vila Kazi Lending"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Loan Application-vk_tab_repayment",
+  "dt": "Loan Application",
+  "fieldname": "vk_tab_repayment",
+  "fieldtype": "Tab Break",
+  "label": "Repayment",
+  "insert_after": "ecl_amount",
+  "module": "Vila Kazi Lending"
+ },
+ {
+  "doctype": "Custom Field",
   "name": "Loan Application-vk_section_payday",
   "dt": "Loan Application",
   "fieldname": "vk_section_payday",
@@ -263,6 +313,7 @@
   "insert_after": "vk_section_workflow",
   "description": "Programmatic workflow stage. Controlled by event hooks and API actions.",
   "module": "Vila Kazi Lending",
+  "allow_on_submit": 1,
   "in_list_view": 1,
   "in_standard_filter": 1
  },
@@ -481,7 +532,7 @@
   "fieldname": "vk_borrower_email",
   "fieldtype": "Data",
   "label": "Borrower Email",
-  "insert_after": "vk_section_workflow",
+  "insert_after": "vk_clean_repayment_history",
   "fetch_from": "applicant.email_id",
   "hidden": 1,
   "read_only": 1,
