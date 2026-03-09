@@ -1,0 +1,162 @@
+{% extends "templates/web.html" %}
+{% from "vila_kazi_lending/templates/includes/portal_macros.html" import stage_badge, status_badge, fmt_currency %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="portal-dashboard">
+
+  <!-- Greeting -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="mb-1">Welcome, {{ portal_user }}</h3>
+      <p class="text-muted mb-0">
+        {{ credit_category }} Member
+        {% if borrower_profile and borrower_profile.credit_score %}
+          · Credit Score: <strong>{{ borrower_profile.credit_score }}</strong>
+        {% endif %}
+      </p>
+    </div>
+    {% if not has_active_application %}
+    <a href="/portal/apply" class="btn btn-primary btn-sm">
+      <i class="fa fa-plus mr-1"></i> Apply for a Loan
+    </a>
+    {% else %}
+    <a href="/portal/loans" class="btn btn-outline-secondary btn-sm">
+      View Active Application
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="row mb-4">
+    <div class="col-sm-6 col-lg-3 mb-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Outstanding Balance</p>
+          <h4 class="mb-0 {% if outstanding_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+            KES {{ "{:,.0f}".format(outstanding_balance | float) }}
+          </h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3 mb-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Active Applications</p>
+          <h4 class="mb-0">{{ active_loan_count }}</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3 mb-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Next Repayment Due</p>
+          {% if next_repayment %}
+          <h4 class="mb-0 {% if next_repayment.status == 'Overdue' %}text-danger{% else %}text-dark{% endif %}">
+            {{ next_repayment.expected_date }}
+          </h4>
+          <small class="text-muted">KES {{ "{:,.0f}".format(next_repayment.expected_amount | float) }}</small>
+          {% else %}
+          <h4 class="mb-0 text-muted">None due</h4>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3 mb-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted small mb-1">On-Time Rate</p>
+          <h4 class="mb-0 {% if on_time_rate >= 80 %}text-success{% elif on_time_rate >= 50 %}text-warning{% else %}text-danger{% endif %}">
+            {{ "{:.0f}".format(on_time_rate | float) }}%
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next Repayment Instruction -->
+  {% if next_repayment %}
+  <div class="alert alert-info mb-4">
+    <strong>Next Repayment Reminder</strong><br>
+    Your next repayment of <strong>KES {{ "{:,.0f}".format(next_repayment.expected_amount | float) }}</strong>
+    is due on <strong>{{ next_repayment.expected_date }}</strong>
+    for loan <a href="/portal/loan?name={{ next_repayment.loan }}">{{ next_repayment.loan }}</a>.<br>
+    Pay via M-Pesa Paybill — see <a href="/portal/repayments">Repayments page</a> for instructions.
+  </div>
+  {% endif %}
+
+  <!-- Recent Activity -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <span class="font-weight-bold">Recent Applications</span>
+      <a href="/portal/loans" class="btn btn-sm btn-outline-secondary">View All</a>
+    </div>
+    <div class="card-body p-0">
+      {% if recent_applications %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Reference</th>
+              <th>Loan Type</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for app in recent_applications %}
+            <tr>
+              <td><a href="/portal/loan?name={{ app.name }}">{{ app.name }}</a></td>
+              <td>{{ app.loan_product or "—" }}</td>
+              <td>KES {{ "{:,.0f}".format(app.loan_amount | float) }}</td>
+              <td>{{ stage_badge(app.vk_loan_stage) }}</td>
+              <td>{{ app.creation.strftime("%d %b %Y") if app.creation else "—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-4 text-muted">
+        <p class="mb-2">No applications yet.</p>
+        <a href="/portal/apply" class="btn btn-primary btn-sm">Apply Now</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Loans -->
+  {% if recent_loans %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white font-weight-bold">Active Loans</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Loan</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Due Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in recent_loans %}
+            <tr>
+              <td><a href="/portal/loan?name={{ loan.name }}">{{ loan.name }}</a></td>
+              <td>KES {{ "{:,.0f}".format(loan.loan_amount | float) }}</td>
+              <td>{{ status_badge(loan.status) }}</td>
+              <td>{{ loan.vk_due_date or "—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

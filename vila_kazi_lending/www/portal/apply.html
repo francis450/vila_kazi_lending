@@ -1,0 +1,200 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="portal-apply">
+  <h3 class="mb-4">Apply for a Loan</h3>
+
+  {% if has_active_application %}
+  <div class="alert alert-warning">
+    <strong>Active Application In Progress</strong><br>
+    You already have a pending application
+    <a href="/portal/loan?name={{ active_application_name }}"><strong>{{ active_application_name }}</strong></a>.
+    Please wait for it to be resolved before submitting a new application.
+  </div>
+
+  {% else %}
+
+  {% if not kyc_verified %}
+  <div class="alert alert-warning mb-4">
+    <strong>KYC Not Yet Verified</strong><br>
+    Your identity documents have not been verified. You can still submit an application,
+    but it will be held at the KYC stage until verification is complete.
+    <a href="/portal/profile">Upload documents →</a>
+  </div>
+  {% endif %}
+
+  <!-- Eligibility Summary -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <p class="text-muted small mb-1">Net Monthly Salary</p>
+          <h5>KES {{ "{:,.0f}".format(net_salary | float) }}</h5>
+        </div>
+        <div class="col-md-4">
+          <p class="text-muted small mb-1">Maximum Eligible</p>
+          <h5 class="text-success">KES {{ "{:,.0f}".format(max_eligible | float) }}</h5>
+        </div>
+        <div class="col-md-4">
+          <p class="text-muted small mb-1">Your Request</p>
+          <h5 id="amount-display">KES 0</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Form -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <form id="loan-application-form">
+
+        <div class="form-group">
+          <label for="loan-type">Loan Type <span class="text-danger">*</span></label>
+          <select class="form-control" id="loan-type" required>
+            <option value="">— Select Loan Type —</option>
+            {% for lt in loan_types %}
+            <option value="{{ lt.name }}">{{ lt.loan_product_name or lt.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="loan-amount">
+            Amount Requested (KES) <span class="text-danger">*</span>
+          </label>
+          <input type="number" class="form-control" id="loan-amount"
+            min="1000" max="{{ max_eligible | int }}" step="500"
+            placeholder="Enter amount" required>
+          <small class="form-text text-muted">
+            Maximum eligible: <strong>KES {{ "{:,.0f}".format(max_eligible | float) }}</strong>
+          </small>
+          <div id="eligible-preview" class="mt-1 small"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="loan-purpose">Purpose <span class="text-danger">*</span></label>
+          <textarea class="form-control" id="loan-purpose" rows="3"
+            placeholder="Briefly describe the purpose of this loan" required
+            maxlength="500"></textarea>
+        </div>
+
+        <div id="form-error" class="alert alert-danger d-none"></div>
+        <div id="form-success" class="alert alert-success d-none"></div>
+
+        <button type="submit" class="btn btn-primary" id="submit-btn">
+          Submit Application
+        </button>
+        <a href="/portal" class="btn btn-outline-secondary ml-2">Cancel</a>
+      </form>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+
+<script>
+frappe.ready(function () {
+    var maxEligible = {{ max_eligible | float }};
+    var previewTimer = null;
+
+    // Live amount display
+    document.getElementById("loan-amount").addEventListener("input", function () {
+        var amount = parseFloat(this.value) || 0;
+        document.getElementById("amount-display").textContent =
+            "KES " + amount.toLocaleString("en-KE", {minimumFractionDigits: 0});
+
+        // Defer eligible preview call to avoid hammering the server
+        clearTimeout(previewTimer);
+        if (amount > 0) {
+            previewTimer = setTimeout(function () {
+                frappe.call({
+                    method: "vila_kazi_lending.api.compute_max_eligible_preview",
+                    args: { net_salary: {{ net_salary | float }}, existing_liabilities: 0 },
+                    callback: function (r) {
+                        var eligible = r.message || 0;
+                        var previewEl = document.getElementById("eligible-preview");
+                        if (amount > eligible) {
+                            previewEl.innerHTML = '<span class="text-danger">⚠ Amount exceeds your eligible limit of KES ' +
+                                eligible.toLocaleString("en-KE") + '</span>';
+                        } else {
+                            previewEl.innerHTML = '<span class="text-success">✓ Within eligible limit</span>';
+                        }
+                    }
+                });
+            }, 600);
+        }
+    });
+
+    // Form submission
+    document.getElementById("loan-application-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        var loanType = document.getElementById("loan-type").value;
+        var loanAmount = parseFloat(document.getElementById("loan-amount").value) || 0;
+        var purpose = document.getElementById("loan-purpose").value.trim();
+        var errEl = document.getElementById("form-error");
+        var successEl = document.getElementById("form-success");
+
+        errEl.classList.add("d-none");
+        successEl.classList.add("d-none");
+
+        if (!loanType) {
+            errEl.textContent = "Please select a Loan Type.";
+            errEl.classList.remove("d-none");
+            return;
+        }
+        if (!loanAmount || loanAmount <= 0) {
+            errEl.textContent = "Please enter a valid loan amount.";
+            errEl.classList.remove("d-none");
+            return;
+        }
+        if (loanAmount > maxEligible) {
+            errEl.textContent = "Amount exceeds your maximum eligible limit of KES " +
+                maxEligible.toLocaleString("en-KE") + ".";
+            errEl.classList.remove("d-none");
+            return;
+        }
+        if (!purpose) {
+            errEl.textContent = "Please describe the purpose of the loan.";
+            errEl.classList.remove("d-none");
+            return;
+        }
+
+        var btn = document.getElementById("submit-btn");
+        btn.disabled = true;
+        btn.textContent = "Submitting…";
+
+        frappe.call({
+            method: "vila_kazi_lending.api.submit_loan_application_portal",
+            args: {
+                loan_type: loanType,
+                loan_amount: loanAmount,
+                purpose: purpose
+            },
+            callback: function (r) {
+                if (r.message && r.message.name) {
+                    successEl.textContent = "Application submitted! Redirecting…";
+                    successEl.classList.remove("d-none");
+                    setTimeout(function () {
+                        window.location.href = "/portal/loan?name=" + r.message.name;
+                    }, 1200);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = "Submit Application";
+                }
+            },
+            error: function (r) {
+                btn.disabled = false;
+                btn.textContent = "Submit Application";
+                var msg = (r._server_messages && JSON.parse(r._server_messages)[0]) || "An error occurred. Please try again.";
+                try { msg = JSON.parse(msg).message || msg; } catch(e) {}
+                errEl.textContent = msg;
+                errEl.classList.remove("d-none");
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

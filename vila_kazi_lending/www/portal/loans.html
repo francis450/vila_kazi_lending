@@ -1,0 +1,96 @@
+{% extends "templates/web.html" %}
+{% from "vila_kazi_lending/templates/includes/portal_macros.html" import stage_badge, status_badge %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="portal-loans">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">My Loans</h3>
+    <a href="/portal/apply" class="btn btn-primary btn-sm">
+      <i class="fa fa-plus mr-1"></i> New Application
+    </a>
+  </div>
+
+  <!-- Applications -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">Loan Applications</div>
+    <div class="card-body p-0">
+      {% if applications %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Reference</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Stage</th>
+              <th>Payday</th>
+              <th>Applied</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for app in applications %}
+            <tr>
+              <td><a href="/portal/loan?name={{ app.name }}">{{ app.name }}</a></td>
+              <td>{{ app.loan_product or "—" }}</td>
+              <td>KES {{ "{:,.0f}".format(app.loan_amount | float) }}</td>
+              <td>
+                {{ stage_badge(app.vk_loan_stage) }}
+                {% if app.vk_auto_approved %}
+                <span class="badge badge-light" title="Fast-lane approved">⚡</span>
+                {% endif %}
+              </td>
+              <td>{{ app.vk_payday_date or "—" }}</td>
+              <td>{{ app.creation.strftime("%d %b %Y") if app.creation else "—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted">
+        <p>No applications yet.</p>
+        <a href="/portal/apply" class="btn btn-primary btn-sm">Apply Now</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Submitted Loans -->
+  {% if loans %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white font-weight-bold">Disbursed Loans</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Loan</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Disbursed</th>
+              <th>Due Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in loans %}
+            <tr>
+              <td><a href="/portal/loan?name={{ loan.name }}">{{ loan.name }}</a></td>
+              <td>{{ loan.loan_product or "—" }}</td>
+              <td>KES {{ "{:,.0f}".format(loan.loan_amount | float) }}</td>
+              <td>{{ status_badge(loan.status) }}</td>
+              <td>{{ loan.disbursement_date or "—" }}</td>
+              <td>{{ loan.vk_due_date or "—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

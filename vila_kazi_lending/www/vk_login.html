@@ -1,0 +1,243 @@
+{% extends "templates/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block head_include %}
+<style>
+  body {
+    background: #f4f6fa !important;
+  }
+  .vk-login-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .vk-login-card {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    padding: 2.5rem 2rem;
+  }
+  .vk-brand {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  .vk-brand h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 0.25rem;
+  }
+  .vk-brand p {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+  }
+  .vk-accent {
+    color: #2d6a4f;
+  }
+  .vk-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    color: #333;
+  }
+  .vk-input {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    font-size: 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    background: #fff;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+  .vk-input:focus {
+    outline: none;
+    border-color: #2d6a4f;
+    box-shadow: 0 0 0 3px rgba(45,106,79,0.15);
+  }
+  .vk-form-group {
+    margin-bottom: 1.2rem;
+  }
+  .vk-btn-primary {
+    display: block;
+    width: 100%;
+    padding: 0.7rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: #2d6a4f;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-top: 0.5rem;
+  }
+  .vk-btn-primary:hover:not(:disabled) {
+    background: #1b4332;
+  }
+  .vk-btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  .vk-error {
+    display: none;
+    background: #fff3f3;
+    color: #c0392b;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+  }
+  .vk-divider {
+    border-top: 1px solid #e9ecef;
+    margin: 1.5rem 0;
+  }
+  .vk-footer-links {
+    text-align: center;
+    font-size: 0.85rem;
+  }
+  .vk-footer-links a {
+    color: #6c757d;
+    text-decoration: none;
+  }
+  .vk-footer-links a:hover {
+    color: #2d6a4f;
+    text-decoration: underline;
+  }
+</style>
+{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="vk-login-wrap">
+  <div class="vk-login-card">
+
+    <!-- Brand -->
+    <div class="vk-brand">
+      <h2>
+        <span class="vk-accent">Vila Kazi</span> Lending
+      </h2>
+      <p>Borrower Self-Service Portal</p>
+    </div>
+
+    <!-- Login Form -->
+    <form id="vk-login-form" autocomplete="on" novalidate>
+
+      <div class="vk-form-group">
+        <label for="login-email" class="vk-label">Email Address</label>
+        <input
+          type="email"
+          class="vk-input"
+          id="login-email"
+          name="username"
+          placeholder="you@example.com"
+          autocomplete="username"
+          required
+        >
+      </div>
+
+      <div class="vk-form-group">
+        <label for="login-password" class="vk-label">Password</label>
+        <input
+          type="password"
+          class="vk-input"
+          id="login-password"
+          name="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+
+      <div id="login-error" class="vk-error"></div>
+
+      <button type="submit" class="vk-btn-primary" id="login-btn">
+        Sign In
+      </button>
+    </form>
+
+    <div class="vk-divider"></div>
+
+    <div class="vk-footer-links">
+      <a href="/update-password">Forgot password?</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+frappe.ready(function () {
+    var redirectTo = {{ redirect_to | tojson }};
+
+    document.getElementById("vk-login-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        var email = document.getElementById("login-email").value.trim();
+        var password = document.getElementById("login-password").value;
+        var errEl = document.getElementById("login-error");
+        var btn = document.getElementById("login-btn");
+
+        errEl.style.display = "none";
+
+        if (!email || !password) {
+            errEl.textContent = "Please enter your email and password.";
+            errEl.style.display = "block";
+            return;
+        } 
+
+        btn.disabled = true;
+        btn.textContent = "Signing in…";
+
+        // POST cmd=login directly — bypasses frappe.call wrapper issues.
+        // System Users → message:"Logged In", home_page:"/app"
+        // Website Users (Borrowers) → message:"No App", home_page:"/portal"
+        var formData = new URLSearchParams();
+        formData.append("cmd", "login");
+        formData.append("usr", email);
+        formData.append("pwd", password);
+
+        fetch("/", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+            credentials: "same-origin"
+        })
+        .then(function(response) {
+            if (!response.ok && response.status !== 200) {
+                throw { status: response.status };
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            // "Logged In" = System User, "No App" = Website User — both mean success
+            if (data.message === "Logged In" || data.message === "No App") {
+                window.location.href = redirectTo;
+            } else {
+                btn.disabled = false;
+                btn.textContent = "Sign In";
+                errEl.textContent = "Invalid email or password. Please try again.";
+                errEl.style.display = "block";
+            }
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            btn.textContent = "Sign In";
+            errEl.textContent = "Login failed. Please check your credentials.";
+            errEl.style.display = "block";
+        });
+    });
+
+    document.getElementById("login-email").focus();
+});
+</script>
+{% endblock %}

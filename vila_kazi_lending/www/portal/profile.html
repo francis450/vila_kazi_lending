@@ -1,0 +1,280 @@
+{% extends "templates/web.html" %}
+{% from "vila_kazi_lending/templates/includes/portal_macros.html" import stage_badge, status_badge, fmt_currency %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="portal-profile">
+  <h3 class="mb-4">My Profile</h3>
+
+  {% if not borrower_profile %}
+  <div class="alert alert-warning">
+    Your borrower profile has not been set up yet. Please contact your lending officer.
+  </div>
+  {% else %}
+  {% set bp = borrower_profile %}
+
+  <!-- KYC & Credit Summary -->
+  <div class="row mb-4">
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-1">KYC Status</h6>
+          <div class="my-2">{{ status_badge(bp.kyc_status) }}</div>
+          {% if bp.kyc_status == "Rejected" %}
+          <small class="text-danger">Documents rejected. Please re-upload below.</small>
+          {% elif bp.kyc_status == "Pending" %}
+          <small class="text-muted">Awaiting verification by lender.</small>
+          {% else %}
+          <small class="text-success">Identity verified.</small>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-1">Credit Category</h6>
+          <div class="my-2">{{ status_badge(bp.credit_category) }}</div>
+          <small class="text-muted">Score: {{ bp.credit_score or "—" }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-1">On-Time Rate</h6>
+          <h4 class="mt-2 {% if (bp.on_time_repayment_rate or 0) >= 80 %}text-success{% else %}text-warning{% endif %}">
+            {{ "{:.0f}".format((bp.on_time_repayment_rate or 0) | float) }}%
+          </h4>
+          <small class="text-muted">Repayment history</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal & Employment Info -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">Personal & Employment</div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="text-muted small mb-1">Customer</label>
+          <p class="mb-0 font-weight-bold">{{ bp.customer }}</p>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="text-muted small mb-1">National ID</label>
+          <p class="mb-0">{{ bp.national_id_number or "—" }}</p>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="text-muted small mb-1">Employer</label>
+          <p class="mb-0">{{ bp.employer_name or "—" }}</p>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="text-muted small mb-1">Net Monthly Salary</label>
+          <p class="mb-0">KES {{ "{:,.0f}".format((bp.net_salary or 0) | float) }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Financial Info -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">Bank & M-Pesa</div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="text-muted small mb-1">Bank</label>
+          <p class="mb-0">{{ bp.bank or "—" }}</p>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="text-muted small mb-1">Bank Account</label>
+          <p class="mb-0">{{ bp.bank_account_number or "—" }}</p>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="text-muted small mb-1">M-Pesa Number</label>
+          <p class="mb-0">{{ bp.mpesa_number or "—" }}</p>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="text-muted small mb-1">Framework Agreement</label>
+          <p class="mb-0">
+            {% if bp.framework_agreement %}
+            <a href="/portal/agreement">{{ bp.framework_agreement }}</a>
+            {% else %}
+            <span class="text-muted">None on file</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KYC Document Upload -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">KYC Documents</div>
+    <div class="card-body">
+      <p class="text-muted small mb-3">
+        Upload your National ID scan and employment letter. Supported formats: PDF, JPG, PNG.
+      </p>
+
+      <div class="row">
+        <!-- National ID Upload -->
+        <div class="col-md-6 mb-3">
+          <label class="font-weight-bold small">National ID Scan</label>
+          <div id="national-id-upload" class="mt-1">
+            {% if bp.national_id_scan %}
+            <p class="small mb-1">
+              Current: <a href="{{ bp.national_id_scan }}" target="_blank">View file</a>
+            </p>
+            {% endif %}
+            <input type="file" class="form-control-file" id="national-id-file" accept=".pdf,.jpg,.jpeg,.png">
+            <button class="btn btn-sm btn-outline-primary mt-2" id="upload-national-id">
+              Upload ID
+            </button>
+            <div id="national-id-status" class="mt-1 small"></div>
+          </div>
+        </div>
+
+        <!-- Employment Letter Upload -->
+        <div class="col-md-6 mb-3">
+          <label class="font-weight-bold small">Employment Letter</label>
+          <div id="employment-letter-upload" class="mt-1">
+            {% if bp.employment_letter %}
+            <p class="small mb-1">
+              Current: <a href="{{ bp.employment_letter }}" target="_blank">View file</a>
+            </p>
+            {% endif %}
+            <input type="file" class="form-control-file" id="employment-letter-file" accept=".pdf,.jpg,.jpeg,.png">
+            <button class="btn btn-sm btn-outline-primary mt-2" id="upload-employment-letter">
+              Upload Letter
+            </button>
+            <div id="employment-letter-status" class="mt-1 small"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+
+<script>
+frappe.ready(function () {
+    function uploadKycDoc(inputId, statusId, fieldname) {
+        const fileInput = document.getElementById(inputId);
+        const statusEl = document.getElementById(statusId);
+
+        if (!fileInput.files || !fileInput.files[0]) {
+            statusEl.innerHTML = '<span class="text-danger">Please select a file first.</span>';
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+        if (!allowedTypes.includes(file.type)) {
+            statusEl.innerHTML = '<span class="text-danger">Only PDF, JPG, or PNG files are allowed.</span>';
+            return;
+        }
+
+        statusEl.innerHTML = '<span class="text-muted">Uploading…</span>';
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("is_private", "0");
+        formData.append("doctype", "Borrower Profile");
+        formData.append("docname", "{{ customer }}");
+        formData.append("fieldname", fieldname);
+
+        frappe.call({
+            url: "/api/method/upload_file",
+            args: {},  // handled via formData below
+            type: "POST",
+            args: {
+                file: file,
+                is_private: 0,
+                doctype: "Borrower Profile",
+                docname: "{{ customer }}",
+                fieldname: fieldname
+            },
+            callback: function(r) {
+                if (r.message && r.message.file_url) {
+                    frappe.call({
+                        method: "vila_kazi_lending.api.upload_kyc_document",
+                        args: {
+                            fieldname: fieldname,
+                            file_url: r.message.file_url
+                        },
+                        callback: function(res) {
+                            if (res.message && res.message.success) {
+                                statusEl.innerHTML = '<span class="text-success">✓ Uploaded successfully. Reload to see the new file.</span>';
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    // Use Frappe's built-in upload_file via form submission for simplicity
+    function attachUploadHandler(buttonId, inputId, statusId, fieldname) {
+        document.getElementById(buttonId).addEventListener("click", function() {
+            const fileInput = document.getElementById(inputId);
+            const statusEl = document.getElementById(statusId);
+
+            if (!fileInput.files || !fileInput.files[0]) {
+                statusEl.innerHTML = '<span class="text-danger">Please select a file first.</span>';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+            if (!allowedTypes.includes(file.type)) {
+                statusEl.innerHTML = '<span class="text-danger">Only PDF, JPG, or PNG files allowed.</span>';
+                return;
+            }
+
+            statusEl.innerHTML = '<span class="text-muted">Uploading…</span>';
+
+            const xhr = new XMLHttpRequest();
+            const fd = new FormData();
+            fd.append("file", file, file.name);
+            fd.append("is_private", "0");
+            fd.append("doctype", "Borrower Profile");
+            fd.append("docname", "{{ customer }}");
+            fd.append("fieldname", fieldname);
+
+            xhr.open("POST", "/api/method/upload_file");
+            xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const resp = JSON.parse(xhr.responseText);
+                    const fileUrl = resp.message && resp.message.file_url;
+                    if (fileUrl) {
+                        frappe.call({
+                            method: "vila_kazi_lending.api.upload_kyc_document",
+                            args: { fieldname: fieldname, file_url: fileUrl },
+                            callback: function(r) {
+                                if (r.message && r.message.success) {
+                                    statusEl.innerHTML = '<span class="text-success">✓ Uploaded. <a href="' + fileUrl + '" target="_blank">View</a></span>';
+                                } else {
+                                    statusEl.innerHTML = '<span class="text-danger">Upload failed. Please try again.</span>';
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    statusEl.innerHTML = '<span class="text-danger">Upload failed. Please try again.</span>';
+                }
+            };
+            xhr.onerror = function() {
+                statusEl.innerHTML = '<span class="text-danger">Network error. Please try again.</span>';
+            };
+            xhr.send(fd);
+        });
+    }
+
+    attachUploadHandler("upload-national-id", "national-id-file", "national-id-status", "national_id_scan");
+    attachUploadHandler("upload-employment-letter", "employment-letter-file", "employment-letter-status", "employment_letter");
+});
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% macro stage_badge(stage) %}
+{%- set color_map = {
+    "Draft": "secondary",
+    "Intake": "info",
+    "Pending KYC Verification": "warning",
+    "Gate Check": "warning",
+    "Lender Review": "primary",
+    "Pending Appraisal": "primary",
+    "Standard Review": "primary",
+    "Appraisal Complete": "primary",
+    "Review Required": "warning",
+    "Pending Lender Confirm": "warning",
+    "Refinancing Requested": "info",
+    "Refinancing Approved": "success",
+    "New Loan Calculation": "info",
+    "Approved": "success",
+    "Declined": "danger",
+    "Refinancing Declined": "danger",
+    "Duplicate - Review": "danger",
+    "Pending Agreement Signing": "warning",
+    "Agreement Signed": "success",
+    "Confirmed for Disbursement": "success",
+    "Pending Disbursement": "success",
+    "Disbursed": "success",
+    "Active": "success",
+    "Repaid": "secondary"
+} -%}
+<span class="badge badge-{{ color_map.get(stage, 'secondary') }}">{{ stage or "—" }}</span>
+{% endmacro %}
+
+{% macro status_badge(status) %}
+{%- set color_map = {
+    "Expected": "primary",
+    "Received": "success",
+    "Partial": "warning",
+    "Overdue": "danger",
+    "Waived": "secondary",
+    "Pending Signature": "warning",
+    "Active": "success",
+    "Expired": "secondary",
+    "Revoked": "danger",
+    "Verified": "success",
+    "Pending": "warning",
+    "Rejected": "danger",
+    "New": "info",
+    "Silver": "secondary",
+    "Gold": "warning",
+    "Platinum": "success"
+} -%}
+<span class="badge badge-{{ color_map.get(status, 'secondary') }}">{{ status or "—" }}</span>
+{% endmacro %}
+
+{% macro fmt_currency(amount) %}
+KES {{ "{:,.2f}".format((amount or 0) | float) }}
+{% endmacro %}
+
+{% macro empty_state(message, icon="inbox") %}
+<div class="text-center py-5 text-muted">
+    <i class="fa fa-{{ icon }} fa-3x mb-3"></i>
+    <p>{{ message }}</p>
+</div>
+{% endmacro %}

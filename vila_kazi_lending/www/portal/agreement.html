@@ -1,0 +1,165 @@
+{% extends "templates/web.html" %}
+{% from "vila_kazi_lending/templates/includes/portal_macros.html" import status_badge %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="portal-agreement">
+  <h3 class="mb-4">Framework Agreement</h3>
+
+  {% if not fa %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+      <i class="fa fa-file-text-o fa-3x text-muted mb-3"></i>
+      <h5 class="text-muted">No Framework Agreement on File</h5>
+      <p class="text-muted mb-3">
+        A Loan Framework Agreement will be generated after your first loan application
+        is approved. Complete your profile and apply for a loan to get started.
+      </p>
+      <a href="/portal/profile" class="btn btn-outline-primary btn-sm mr-2">My Profile</a>
+      <a href="/portal/apply" class="btn btn-primary btn-sm">Apply for a Loan</a>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- Status Banner -->
+  <div class="alert
+    {% if fa.status == 'Active' %}alert-success
+    {% elif fa.status == 'Pending Signature' %}alert-warning
+    {% elif fa.status in ('Expired', 'Revoked') %}alert-danger
+    {% else %}alert-secondary{% endif %} mb-4">
+    <strong>Agreement Status:</strong> {{ status_badge(fa.status) }}
+    {% if fa.status == 'Pending Signature' %}
+    — Please review and sign your agreement below.
+    {% elif fa.status == 'Active' %}
+    — Your agreement is active.
+    {% elif fa.status == 'Revoked' and fa.revocation_reason %}
+    — Reason: {{ fa.revocation_reason }}
+    {% endif %}
+  </div>
+
+  <!-- Agreement Details -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">Agreement Details</div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4 mb-2">
+          <span class="text-muted small">Reference</span>
+          <p class="mb-0 font-weight-bold">{{ fa.name }}</p>
+        </div>
+        <div class="col-md-4 mb-2">
+          <span class="text-muted small">Clause Version</span>
+          <p class="mb-0">{{ fa.clause_version or "—" }}</p>
+        </div>
+        <div class="col-md-4 mb-2">
+          <span class="text-muted small">Status</span>
+          <p class="mb-0">{{ status_badge(fa.status) }}</p>
+        </div>
+        <div class="col-md-4 mb-2">
+          <span class="text-muted small">Valid From</span>
+          <p class="mb-0">{{ fa.valid_from or "—" }}</p>
+        </div>
+        <div class="col-md-4 mb-2">
+          <span class="text-muted small">Valid Until</span>
+          <p class="mb-0">{{ fa.valid_until or "—" }}</p>
+        </div>
+        <div class="col-md-4 mb-2">
+          <span class="text-muted small">Signed Date</span>
+          <p class="mb-0">{{ fa.signed_date or "—" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Actions -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">Documents</div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap">
+
+        {% if fa.generated_pdf %}
+        <a href="{{ fa.generated_pdf }}" target="_blank" class="btn btn-outline-primary mr-3 mb-2">
+          <i class="fa fa-download mr-1"></i> Download Agreement PDF
+        </a>
+        {% endif %}
+
+        {% if fa.signed_document %}
+        <a href="{{ fa.signed_document }}" target="_blank" class="btn btn-outline-secondary mr-3 mb-2">
+          <i class="fa fa-file-text mr-1"></i> View Signed Document
+        </a>
+        {% endif %}
+
+        {% if not fa.generated_pdf and not fa.signed_document %}
+        <p class="text-muted small mb-0">Agreement document is being generated. Check back shortly.</p>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Sign Action -->
+  {% if fa.status == "Pending Signature" %}
+  <div class="card border-0 border-warning shadow-sm mb-4">
+    <div class="card-header bg-warning text-dark font-weight-bold">Action Required: Sign Your Agreement</div>
+    <div class="card-body">
+      <p>
+        Please download and review the agreement PDF above before signing.
+        By clicking <strong>Sign Agreement</strong> you confirm that you have read and
+        accept the terms of this Loan Framework Agreement.
+      </p>
+      <div id="sign-error" class="alert alert-danger d-none"></div>
+      <button class="btn btn-success" id="sign-btn" data-fa="{{ fa.name }}">
+        <i class="fa fa-pen mr-1"></i> Sign Agreement
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+
+</div>
+
+{% if fa and fa.status == "Pending Signature" %}
+<script>
+frappe.ready(function () {
+    document.getElementById("sign-btn").addEventListener("click", function () {
+        var faName = this.getAttribute("data-fa");
+        var btn = this;
+        var errEl = document.getElementById("sign-error");
+
+        if (!confirm("By confirming, you agree to the terms of the Loan Framework Agreement " + faName + ". This action cannot be undone.")) {
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Signing…";
+        errEl.classList.add("d-none");
+
+        frappe.call({
+            method: "vila_kazi_lending.api.sign_framework_agreement",
+            args: { fa_name: faName },
+            callback: function (r) {
+                if (r.message && r.message.success) {
+                    window.location.reload();
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = "Sign Agreement";
+                    errEl.textContent = "Signing failed. Please try again or contact support.";
+                    errEl.classList.remove("d-none");
+                }
+            },
+            error: function (r) {
+                btn.disabled = false;
+                btn.textContent = "Sign Agreement";
+                var msg = (r._server_messages && JSON.parse(r._server_messages)[0]) || "An error occurred.";
+                try { msg = JSON.parse(msg).message || msg; } catch(e) {}
+                errEl.textContent = msg;
+                errEl.classList.remove("d-none");
+            }
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

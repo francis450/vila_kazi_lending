@@ -1,0 +1,115 @@
+{% extends "templates/web.html" %}
+{% from "vila_kazi_lending/templates/includes/portal_macros.html" import status_badge %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="portal-repayments">
+  <h3 class="mb-4">My Repayments</h3>
+
+  <!-- Summary Cards -->
+  <div class="row mb-4">
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Total Expected</p>
+          <h5>KES {{ "{:,.0f}".format(total_expected | float) }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Total Received</p>
+          <h5 class="text-success">KES {{ "{:,.0f}".format(total_received | float) }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Outstanding</p>
+          <h5 class="{% if total_outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+            KES {{ "{:,.0f}".format(total_outstanding | float) }}
+          </h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- M-Pesa Instructions (shown when there are pending/overdue items) -->
+  {% set pending_items = repayments | selectattr("status", "in", ["Expected", "Partial", "Overdue"]) | list %}
+  {% if pending_items %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-light font-weight-bold">
+      <i class="fa fa-mobile mr-1"></i> How to Pay via M-Pesa
+    </div>
+    <div class="card-body">
+      <ol class="mb-0">
+        <li>Open M-Pesa on your phone → Lipa na M-Pesa → Pay Bill</li>
+        <li>Business Number: <strong>{{ paybill_number }}</strong></li>
+        <li>Account Number: use the <strong>Paybill Ref</strong> shown in the table below</li>
+        <li>Enter the expected amount and complete the payment</li>
+      </ol>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Repayments Table -->
+  {% if repayments %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Reference</th>
+              <th>Loan</th>
+              <th>Due Date</th>
+              <th>Expected</th>
+              <th>Received</th>
+              <th>Variance</th>
+              <th>Status</th>
+              <th>Paybill Ref</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rr in repayments %}
+            <tr class="{{ 'table-danger' if rr.status == 'Overdue' else '' }}">
+              <td>{{ rr.name }}</td>
+              <td><a href="/portal/loan?name={{ rr.loan }}">{{ rr.loan or "—" }}</a></td>
+              <td>{{ rr.expected_date or "—" }}</td>
+              <td>KES {{ "{:,.0f}".format((rr.expected_amount or 0) | float) }}</td>
+              <td>KES {{ "{:,.0f}".format((rr.received_amount or 0) | float) }}</td>
+              <td>
+                {% if rr.variance is not none %}
+                <span class="{{ 'text-danger' if (rr.variance or 0) < 0 else 'text-success' }}">
+                  KES {{ "{:,.0f}".format((rr.variance or 0) | float) }}
+                </span>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {{ status_badge(rr.status) }}
+                {% if rr.days_overdue %}
+                <br><small class="text-danger">{{ rr.days_overdue }} days overdue</small>
+                {% endif %}
+              </td>
+              <td><code>{{ rr.paybill_account_ref or "—" }}</code></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="fa fa-check-circle fa-3x mb-3 text-success"></i>
+    <p>No repayment records found. Apply for a loan to get started.</p>
+    <a href="/portal/apply" class="btn btn-primary btn-sm">Apply Now</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

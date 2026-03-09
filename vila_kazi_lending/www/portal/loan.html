@@ -1,0 +1,188 @@
+{% extends "templates/web.html" %}
+{% from "vila_kazi_lending/templates/includes/portal_macros.html" import stage_badge, status_badge %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="portal-loan-detail">
+
+  <div class="mb-3">
+    <a href="/portal/loans" class="btn btn-sm btn-outline-secondary">
+      ← Back to Loans
+    </a>
+  </div>
+
+  <!-- ======================== LOAN APPLICATION ======================== -->
+  {% if doc_type == "Loan Application" and app %}
+  <h3 class="mb-1">Application {{ app.name }}</h3>
+  <p class="text-muted">{{ app.loan_product or "" }}</p>
+  <p class="text-muted mb-4">Created {{ app.creation.strftime("%d %b %Y") if app.creation else "—" }}</p>
+
+  <div class="row mb-4">
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Amount Requested</p>
+          <h4>KES {{ "{:,.0f}".format(app.loan_amount | float) }}</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Current Stage</p>
+          <div class="mt-2">{{ stage_badge(app.vk_loan_stage) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Loan Product</p>
+          <h5>{{ app.loan_product or "—" }}</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage Timeline -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">Application Progress</div>
+    <div class="card-body">
+      {% set stages = [
+        ("Draft", "Application submitted"),
+        ("Intake", "Intake review"),
+        ("Pending KYC Verification", "KYC check"),
+        ("Gate Check", "Gate check"),
+        ("Lender Review", "Lender review"),
+        ("Approved", "Approved"),
+        ("Agreement Signed", "Agreement signed"),
+        ("Disbursed", "Disbursed")
+      ] %}
+      <div class="d-flex flex-wrap">
+        {% for stage_name, label in stages %}
+        <div class="text-center mr-3 mb-2" style="min-width:80px;">
+          <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center
+            {% if app.vk_loan_stage == stage_name %}bg-primary text-white{% else %}bg-light text-muted{% endif %}"
+            style="width:36px;height:36px;font-size:12px;">
+            {% if app.vk_loan_stage == stage_name %}●{% else %}○{% endif %}
+          </div>
+          <small class="{% if app.vk_loan_stage == stage_name %}font-weight-bold{% else %}text-muted{% endif %}">
+            {{ label }}
+          </small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Details -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">Details</div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6 mb-2">
+          <span class="text-muted small">Max Eligible:</span>
+          <strong> KES {{ "{:,.0f}".format((app.vk_max_eligible_amount or 0) | float) }}</strong>
+        </div>
+        <div class="col-md-6 mb-2">
+          <span class="text-muted small">Payday Date:</span>
+          <strong> {{ app.vk_payday_date or "—" }}</strong>
+        </div>
+        <div class="col-md-6 mb-2">
+          <span class="text-muted small">Framework Agreement:</span>
+          <strong>
+            {% if app.vk_has_framework_agreement %}
+            <a href="/portal/agreement">View</a>
+            {% else %} Not linked{% endif %}
+          </strong>
+        </div>
+        <div class="col-md-6 mb-2">
+          <span class="text-muted small">Fast-Lane:</span>
+          <strong> {{ "Yes ⚡" if app.vk_auto_approved else "No" }}</strong>
+        </div>
+      </div>
+      {% if app.vk_rejection_reason %}
+      <div class="alert alert-danger mt-3 mb-0">
+        <strong>Rejection Reason:</strong> {{ app.vk_rejection_reason }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ======================== LOAN (DISBURSED) ======================== -->
+  {% elif doc_type == "Loan" and loan %}
+  <h3 class="mb-1">Loan {{ loan.name }}</h3>
+  <p class="text-muted">{{ loan.loan_product or "" }}</p>
+  <p class="text-muted mb-4">Disbursed on {{ loan.disbursement_date or "—" }}</p>
+
+  <div class="row mb-4">
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Loan Amount</p>
+          <h4>KES {{ "{:,.0f}".format(loan.loan_amount | float) }}</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Status</p>
+          <div class="mt-2">{{ status_badge(loan.status) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-muted small mb-1">Due Date</p>
+          <h4>{{ loan.vk_due_date or "—" }}</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- M-Pesa Repayment Instructions -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold">Repayment Instructions</div>
+    <div class="card-body">
+      <p class="mb-2">Pay via M-Pesa Paybill:</p>
+      <ol class="mb-3">
+        <li>Go to M-Pesa → Lipa na M-Pesa → Pay Bill</li>
+        <li>Business: <strong>{{ paybill_number }}</strong></li>
+        <li>Account: <strong>{{ loan.vk_repayment_paybill_ref or "—" }}</strong></li>
+        <li>Amount: the amount shown below</li>
+      </ol>
+      {% if rr %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <tr>
+            <th>Expected Date</th><td>{{ rr.expected_date or "—" }}</td>
+            <th>Expected Amount</th><td>KES {{ "{:,.0f}".format((rr.expected_amount or 0) | float) }}</td>
+          </tr>
+          <tr>
+            <th>Status</th><td>{{ status_badge(rr.status) }}</td>
+            <th>Received</th><td>KES {{ "{:,.0f}".format((rr.received_amount or 0) | float) }}</td>
+          </tr>
+          {% if rr.days_overdue %}
+          <tr>
+            <td colspan="4">
+              <span class="text-danger font-weight-bold">⚠ {{ rr.days_overdue }} days overdue</span>
+            </td>
+          </tr>
+          {% endif %}
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted small">Repayment schedule will appear here once processed.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% else %}
+  <div class="alert alert-warning">Document not found.</div>
+  {% endif %}
+
+</div>
+{% endblock %}
