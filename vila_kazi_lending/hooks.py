@@ -144,6 +144,25 @@ scheduler_events = {
 	],
 }
 
+# ---------------------------------------------------------------------------
+# Portal — Customer Self-Service Portal
+# ---------------------------------------------------------------------------
+
+# Redirect borrowers to the portal after login
+role_home_page = {"Borrower": "/portal"}
+
+# Clean URL routing for nested portal pages
+website_route_rules = [
+	{"from_route": "/portal", "to_route": "portal"},
+	{"from_route": "/portal/profile", "to_route": "portal/profile"},
+	{"from_route": "/portal/loans", "to_route": "portal/loans"},
+	{"from_route": "/portal/loan", "to_route": "portal/loan"},
+	{"from_route": "/portal/apply", "to_route": "portal/apply"},
+	{"from_route": "/portal/repayments", "to_route": "portal/repayments"},
+	{"from_route": "/portal/agreement", "to_route": "portal/agreement"},
+	{"from_route": "/vk-login", "to_route": "vk_login"},
+]
+
 # Apps
 # ------------------
 
