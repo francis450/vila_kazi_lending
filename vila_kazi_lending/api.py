@@ -273,28 +273,26 @@ def submit_loan_application_portal(
 
 
 @frappe.whitelist()
-def sign_framework_agreement(fa_name: str) -> dict:
+def sign_framework_agreement(fa_name: str, signature_data: str = "") -> dict:
 	"""Borrower digitally signs their Loan Framework Agreement.
 
-	Validates ownership (fa.borrower == session customer) and that the
-	agreement is in ``Pending Signature`` status before activating it.
+	Validates ownership, renders agreement + signature block to HTML,
+	generates a signed PDF, saves it as a private File, then activates
+	the agreement.
 
 	Args:
-	    fa_name: Name of the Loan Framework Agreement document.
+	    fa_name:        Name of the Loan Framework Agreement document.
+	    signature_data: Base64 data-URL of the signature image (PNG/JPG).
 
 	Returns:
-	    dict with key ``success: True``.
-
-	Raises:
-	    frappe.PermissionError: If the FA does not belong to the session borrower.
-	    frappe.ValidationError: If the FA is not in Pending Signature status.
+	    dict with ``success: True`` and ``signed_pdf_url``.
 	"""
 	customer = _get_portal_customer()
 
 	fa = frappe.db.get_value(
 		"Loan Framework Agreement",
 		fa_name,
-		["name", "borrower", "status"],
+		["name", "borrower", "status", "agreement_template", "clause_version"],
 		as_dict=True,
 	)
 	if not fa:
@@ -311,17 +309,148 @@ def sign_framework_agreement(fa_name: str) -> dict:
 			_("This agreement cannot be signed: current status is '{0}'.").format(fa.status)
 		)
 
-	frappe.db.set_value(
-		"Loan Framework Agreement",
-		fa_name,
-		{
-			"status": "Active",
-			"signed_date": frappe.utils.today(),
-		},
-	)
+	# Validate signature: must be a base64 image data URL
+	if not signature_data or not signature_data.startswith("data:image/"):
+		frappe.throw(_("A valid signature image is required."), frappe.ValidationError)
+
+	# Generate the signed PDF
+	signed_pdf_url = _generate_signed_agreement_pdf(fa, customer, signature_data)
+
+	update_fields = {
+		"status": "Active",
+		"signed_date": frappe.utils.today(),
+	}
+	if signed_pdf_url:
+		update_fields["signed_document"] = signed_pdf_url
+
+	frappe.db.set_value("Loan Framework Agreement", fa_name, update_fields)
 	frappe.db.commit()
 
-	return {"success": True}
+	return {"success": True, "signed_pdf_url": signed_pdf_url or ""}
+
+
+def _generate_signed_agreement_pdf(fa, customer: str, signature_data: str) -> str | None:
+	"""Render the agreement template + embedded signature to PDF and save as a File."""
+	try:
+		from frappe.utils.pdf import get_pdf
+	except ImportError:
+		return None
+
+	if not fa.agreement_template:
+		return None
+
+	template = frappe.db.get_value(
+		"Loan Agreement Template",
+		fa.agreement_template,
+		["template_content", "version"],
+		as_dict=True,
+	)
+	if not template or not template.template_content:
+		return None
+
+	customer_name = frappe.db.get_value("Customer", customer, "customer_name") or customer
+	bp = frappe.db.get_value(
+		"Borrower Profile",
+		{"customer": customer},
+		["national_id_number", "employer_name"],
+		as_dict=True,
+	) or frappe._dict()
+
+	app = frappe.db.get_value(
+		"Loan Application",
+		{"vk_framework_agreement": fa.name},
+		["loan_amount", "vk_payday_date", "rate_of_interest", "vk_loan_security_fee"],
+		as_dict=True,
+		order_by="creation desc",
+	) or frappe._dict()
+
+	loan_amount = app.get("loan_amount") or 0
+	security_fee = app.get("vk_loan_security_fee") or 0
+	if not security_fee and loan_amount:
+		pct = frappe.db.get_single_value("VK Lending Settings", "security_fee_percentage") or 5.0
+		security_fee = loan_amount * pct / 100
+
+	today_str = frappe.utils.today()
+
+	jinja_context = {
+		"borrower_name": customer_name,
+		"national_id": bp.national_id_number or "",
+		"employer": bp.employer_name or "",
+		"loan_amount": frappe.utils.fmt_money(loan_amount, currency="KES"),
+		"payday_date": app.get("vk_payday_date") or "",
+		"interest_rate": app.get("rate_of_interest") or 0,
+		"loan_security_fee": frappe.utils.fmt_money(security_fee, currency="KES"),
+		"signed_date": today_str,
+	}
+
+	agreement_body = frappe.utils.jinja.render_template(
+		template.template_content, jinja_context
+	)
+
+	sig_block = """
+<div style="margin-top:48px;padding-top:24px;border-top:2px solid #333;page-break-inside:avoid;">
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td style="width:55%;padding-right:24px;vertical-align:bottom;">
+        <div style="border-top:1px solid #555;padding-top:6px;">
+          <img src="{sig}" alt="Borrower Signature"
+               style="max-height:80px;max-width:260px;display:block;margin-bottom:6px;">
+          <p style="margin:0;font-size:12px;"><strong>{name}</strong></p>
+          <p style="margin:2px 0;font-size:11px;color:#555;">Borrower Signature</p>
+        </div>
+      </td>
+      <td style="width:45%;vertical-align:bottom;">
+        <div style="border-top:1px solid #555;padding-top:6px;">
+          <p style="margin:0;font-size:13px;">{date}</p>
+          <p style="margin:2px 0;font-size:11px;color:#555;">Date Signed</p>
+        </div>
+      </td>
+    </tr>
+  </table>
+  <p style="margin-top:16px;font-size:11px;color:#888;">
+    Agreement Reference: {fa_name} &nbsp;|&nbsp; Clause Version: {version}
+  </p>
+</div>
+""".format(
+		sig=signature_data,
+		name=customer_name,
+		date=today_str,
+		fa_name=fa.name,
+		version=fa.clause_version or template.version or "v1",
+	)
+
+	full_html = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {{ font-family: Arial, sans-serif; font-size: 13px; color: #222;
+         margin: 30px 40px; line-height: 1.6; }}
+</style>
+</head>
+<body>
+{body}
+{sig_block}
+</body>
+</html>""".format(body=agreement_body, sig_block=sig_block)
+
+	try:
+		pdf_bytes = get_pdf(full_html)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "Signed Agreement PDF generation failed")
+		return None
+
+	fname = "VK-Signed-Agreement-{0}.pdf".format(fa.name)
+	_file = frappe.get_doc({
+		"doctype": "File",
+		"file_name": fname,
+		"content": pdf_bytes,
+		"attached_to_doctype": "Loan Framework Agreement",
+		"attached_to_name": fa.name,
+		"is_private": 1,
+	})
+	_file.save(ignore_permissions=True)
+	return _file.file_url
 
 
 @frappe.whitelist()
