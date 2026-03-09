@@ -181,3 +181,191 @@ def _trigger_on_update_email(docname: str, stage: str) -> None:
 	"""Kept for backward compatibility. No longer called — all stage setters now use
 	doc.save() which fires on_update_after_submit automatically."""
 	pass
+
+
+# ---------------------------------------------------------------------------
+# Borrower Portal API — Customer Self-Service
+# ---------------------------------------------------------------------------
+
+# Allowlist of BorrowerProfile fields a borrower may upload via the portal.
+_KYC_UPLOAD_FIELDS = frozenset({"national_id_scan", "employment_letter"})
+
+
+def _get_portal_customer() -> str:
+	"""Return the Customer name for the current portal session.
+
+	Raises frappe.PermissionError when the session user is not a Borrower or
+	has no linked Customer record.  Called by every borrower API method.
+	"""
+	from vila_kazi_lending.utils import get_portal_customer
+
+	return get_portal_customer()
+
+
+@frappe.whitelist()
+def submit_loan_application_portal(
+	loan_product: str, loan_amount: float, purpose: str
+) -> dict:
+	"""Create and submit a Loan Application on behalf of the logged-in borrower.
+
+	Pre-fills vk_net_salary and vk_existing_liabilities from the borrower's
+	BorrowerProfile.  The application is submitted immediately so it enters
+	the workflow (before_submit fires route_workflow).
+
+	Args:
+	    loan_type: Name of the Loan Type document.
+	    loan_amount: Requested loan amount (KES, positive float).
+	    purpose: Short free-text description of the loan purpose.
+
+	Returns:
+	    dict with key ``name`` — the created Loan Application name.
+
+	Raises:
+	    frappe.PermissionError: If the session user is not a Borrower.
+	    frappe.ValidationError: If the borrower already has an active pending
+	                            application or if the amount is invalid.
+	"""
+	customer = _get_portal_customer()
+
+	loan_amount = float(loan_amount or 0)
+	if loan_amount <= 0:
+		frappe.throw(_("Loan amount must be greater than zero."))
+
+	# Guard: block if an active (non-terminal) application exists
+	_TERMINAL_STAGES = {"Approved", "Declined", "Refinancing Declined", "Disbursed", "Repaid"}
+	active = frappe.db.get_all(
+		"Loan Application",
+		filters={
+			"applicant": customer,
+			"applicant_type": "Customer",
+			"docstatus": ["!=", 2],
+		},
+		fields=["name", "vk_loan_stage"],
+		limit=10,
+	)
+	for rec in active:
+		if rec.vk_loan_stage not in _TERMINAL_STAGES:
+			frappe.throw(
+				_("You already have an active loan application ({0}) in progress. "
+				  "Please wait for it to be resolved before applying again.").format(rec.name)
+			)
+
+	# Pull borrower financial data from profile
+	bp = frappe.db.get_value(
+		"Borrower Profile",
+		customer,
+		["net_salary", "bank"],
+		as_dict=True,
+	) or {}
+
+	doc = frappe.new_doc("Loan Application")
+	doc.applicant_type = "Customer"
+	doc.applicant = customer
+	doc.loan_product = loan_product
+	doc.loan_amount = loan_amount
+	doc.description = purpose
+	doc.vk_net_salary = bp.get("net_salary") or 0
+	doc.vk_borrower_bank = bp.get("bank") or None
+	doc.insert(ignore_permissions=True)
+	doc.submit()
+
+	return {"name": doc.name}
+
+
+@frappe.whitelist()
+def sign_framework_agreement(fa_name: str) -> dict:
+	"""Borrower digitally signs their Loan Framework Agreement.
+
+	Validates ownership (fa.borrower == session customer) and that the
+	agreement is in ``Pending Signature`` status before activating it.
+
+	Args:
+	    fa_name: Name of the Loan Framework Agreement document.
+
+	Returns:
+	    dict with key ``success: True``.
+
+	Raises:
+	    frappe.PermissionError: If the FA does not belong to the session borrower.
+	    frappe.ValidationError: If the FA is not in Pending Signature status.
+	"""
+	customer = _get_portal_customer()
+
+	fa = frappe.db.get_value(
+		"Loan Framework Agreement",
+		fa_name,
+		["name", "borrower", "status"],
+		as_dict=True,
+	)
+	if not fa:
+		frappe.throw(_("Framework Agreement {0} not found.").format(fa_name))
+
+	if fa.borrower != customer:
+		frappe.throw(
+			_("You do not have permission to sign this agreement."),
+			frappe.PermissionError,
+		)
+
+	if fa.status != "Pending Signature":
+		frappe.throw(
+			_("This agreement cannot be signed: current status is '{0}'.").format(fa.status)
+		)
+
+	frappe.db.set_value(
+		"Loan Framework Agreement",
+		fa_name,
+		{
+			"status": "Active",
+			"signed_date": frappe.utils.today(),
+		},
+	)
+	frappe.db.commit()
+
+	return {"success": True}
+
+
+@frappe.whitelist()
+def upload_kyc_document(fieldname: str, file_url: str) -> dict:
+	"""Attach a KYC document URL to the borrower's BorrowerProfile.
+
+	Only the fields in ``_KYC_UPLOAD_FIELDS`` may be written via this endpoint
+	(national_id_scan, employment_letter).  The write uses ignore_permissions
+	because the Borrower role has read-only access on BorrowerProfile — the
+	allowlist enforces safety instead.
+
+	Args:
+	    fieldname: The BorrowerProfile field to update ("national_id_scan"
+	               or "employment_letter").
+	    file_url: The uploaded file URL (from a prior Frappe file upload).
+
+	Returns:
+	    dict with key ``success: True``.
+
+	Raises:
+	    frappe.PermissionError: If the session user is not a Borrower.
+	    frappe.ValidationError: If fieldname is not in the allowlist.
+	"""
+	customer = _get_portal_customer()
+
+	if fieldname not in _KYC_UPLOAD_FIELDS:
+		frappe.throw(
+			_("Invalid field '{0}'. Only KYC document fields may be updated via this endpoint.").format(
+				fieldname
+			),
+			frappe.ValidationError,
+		)
+
+	# Validate that file_url is an internal Frappe file (not an external URL)
+	if file_url and not file_url.startswith("/files/"):
+		frappe.throw(_("Only files uploaded to this system may be attached."))
+
+	frappe.db.set_value(
+		"Borrower Profile",
+		customer,
+		fieldname,
+		file_url,
+		update_modified=True,
+	)
+	frappe.db.commit()
+
+	return {"success": True}
