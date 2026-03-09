@@ -93,35 +93,43 @@ def parse_mpesa_statement(doc_name: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Background job: rule-based appraisal scoring
+# Background job: rule-based appraisal scoring  (Layer 5)
 # ---------------------------------------------------------------------------
 
-# Score model — maximum points per dimension (total = 100):
-#   salary_regularity  0–25   % of months that had a salary/B2C credit
-#   cashflow_trend     0–20   Improving / Stable / Declining
-#   competing_loan     0–20   loan_repayments_detected / monthly_avg_inflow ratio
-#   payday_behavior    0–15   avg_monthly_balance / monthly_avg_inflow ratio (buffer proxy)
-#   gambling           0–10   gambling_total / monthly_avg_inflow ratio
-#   request_ratio      0–10   requested_amount / max_eligible_amount
+# Score model — six sub-scores each 0–100, weighted to sum to 100 points:
+#   salary_regularity   weight 25   % of months with salary/B2C credit
+#   cashflow_trend      weight 20   Improving / Stable / Declining
+#   competing_loan      weight 20   loan_repayments ÷ monthly_avg_inflow
+#   payday_behavior     weight 15   payday crash rate (0 stored → defaults 0)
+#   gambling_activity   weight 10   gambling_total ÷ monthly_avg_inflow
+#   request_ratio       weight 10   requested_amount ÷ max_eligible_amount
 #
-# Thresholds:
-#   ≥ 65   → Approve
-#   40–64  → Review
-#   < 40   → Decline
+# Hard rules (evaluated first — any trigger → Decline, skip scoring):
+#   HR-1: requested_amount > compute_max_eligible()
+#   HR-2: gambling_total > monthly_avg_inflow × 0.10
+#   HR-3: Borrower credit_category == "Watch"
 #
-# auto_approved = True when: score ≥ 75 AND within_limit AND no gambling AND competing ratio ≤ 0.30
+# Thresholds (from VK Lending Settings, defaults):
+#   ≥ 70 → Approve | ≥ 50 → Review | < 50 → Decline
+#
+# Soft rule: competing_loan burden_ratio > 0.30 → escalate Approve → Review
 
 
 def run_appraisal_scoring(appraisal_name: str) -> None:
 	"""
 	Rule-based scoring engine for a Loan Appraisal.
 
-	Reads the linked M-Pesa Statement metrics, computes six sub-scores,
-	derives a recommendation, and writes results via LoanAppraisal.set_ai_results().
+	Evaluates three hard rules first (any trigger → immediate Decline).
+	Aborts to Review if the M-Pesa Statement is missing or unparsed.
+	Otherwise computes six weighted sub-scores, derives a recommendation,
+	and writes all results via LoanAppraisal.set_ai_results().
 
-	If no M-Pesa Statement is linked the appraisal scores only on eligibility
-	(request_ratio sub-score) and flags the record for manual review.
+	The on_update event in events/loan_appraisal.py advances the linked
+	Loan Application's vk_loan_stage based on the saved recommendation.
 	"""
+	from vila_kazi_lending.utils import compute_max_eligible
+
+	# ── Load Loan Appraisal ───────────────────────────────────────────────
 	try:
 		appraisal = frappe.get_doc("Loan Appraisal", appraisal_name)
 	except frappe.DoesNotExistError:
@@ -131,7 +139,28 @@ def run_appraisal_scoring(appraisal_name: str) -> None:
 		)
 		return
 
-	# ── Pull M-Pesa Statement metrics ────────────────────────────────────
+	# ── Load Loan Application ─────────────────────────────────────────────
+	la = None
+	if appraisal.loan_application:
+		la = frappe.db.get_value(
+			"Loan Application",
+			appraisal.loan_application,
+			["applicant", "vk_net_salary", "vk_existing_liabilities",
+			 "vk_is_refinancing", "vk_borrower_bank"],
+			as_dict=True,
+		)
+
+	# ── Load Borrower Profile ─────────────────────────────────────────────
+	bp = None
+	if la and la.applicant:
+		bp = frappe.db.get_value(
+			"Borrower Profile",
+			{"customer": la.applicant},
+			["credit_category", "on_time_repayment_rate"],
+			as_dict=True,
+		)
+
+	# ── Load M-Pesa Statement ─────────────────────────────────────────────
 	stmt = None
 	if appraisal.mpesa_statement:
 		stmt = frappe.db.get_value(
@@ -139,6 +168,8 @@ def run_appraisal_scoring(appraisal_name: str) -> None:
 			appraisal.mpesa_statement,
 			[
 				"parse_status",
+				"period_from",
+				"period_to",
 				"monthly_avg_inflow",
 				"monthly_avg_outflow",
 				"salary_credit_regularity",
@@ -150,165 +181,233 @@ def run_appraisal_scoring(appraisal_name: str) -> None:
 			],
 			as_dict=True,
 		)
-		# Only use a successfully parsed statement
 		if stmt and stmt.parse_status != "Parsed":
 			stmt = None
 
-	# ── Sub-score helpers ─────────────────────────────────────────────────
+	# ── Abort: no usable statement ────────────────────────────────────────
+	if stmt is None:
+		appraisal.set_ai_results(
+			appraisal_score=0.0,
+			sub_scores={k: 0.0 for k in (
+				"salary_regularity", "cashflow_trend", "competing_loan",
+				"payday_behavior", "gambling", "request_ratio",
+			)},
+			recommendation="Review",
+			risk_flags="",
+			ai_summary="M-Pesa statement not yet parsed",
+			auto_approved=False,
+		)
+		return
 
-	def _ratio(numerator: float, denominator: float) -> float:
-		"""Safe division; returns 0 if denominator is 0."""
-		return numerator / denominator if denominator else 0.0
+	# ── Load VK Lending Settings ──────────────────────────────────────────
+	settings = frappe.get_single("VK Lending Settings")
 
-	# 1. Salary regularity (0–25)
-	# salary_credit_regularity is 0–100 (% of months with income credit)
-	salary_reg = (stmt.salary_credit_regularity if stmt else 50.0) / 100.0
-	salary_regularity_score = round(salary_reg * 25.0, 2)
+	# Default weights (VK Lending Settings has no per-weight fields → always defaults)
+	_DEFAULT_WEIGHTS = {
+		"salary_regularity": 25,
+		"cashflow_trend":    20,
+		"competing_loan":    20,
+		"payday_behavior":   15,
+		"gambling":          10,
+		"request_ratio":     10,
+	}
+	weights = {
+		k: (getattr(settings, f"{k}_weight", None) or v)
+		for k, v in _DEFAULT_WEIGHTS.items()
+	}
+	if sum(weights.values()) != 100:
+		frappe.throw(
+			f"Appraisal scoring weights must sum to 100 "
+			f"(current: {sum(weights.values())}). "
+			"Check VK Lending Settings.",
+			frappe.ValidationError,
+		)
 
-	# 2. Cashflow trend (0–20)
-	trend = (stmt.net_cashflow_trend if stmt else "Stable") or "Stable"
-	cashflow_trend_score = {"Improving": 20.0, "Stable": 13.0, "Declining": 4.0}.get(trend, 13.0)
+	# ── Shared derived values ─────────────────────────────────────────────
+	requested  = appraisal.requested_amount or 0.0
+	net_salary = appraisal.net_salary or 0.0
+	existing_liabilities = appraisal.existing_liabilities or 0.0
+	max_eligible = compute_max_eligible(net_salary, existing_liabilities)
+	inflow = stmt.monthly_avg_inflow or 1.0  # avoid div-by-zero
 
-	# 3. Competing loan burden (0–20)
-	competing_ratio = _ratio(
-		stmt.loan_repayments_detected if stmt else 0.0,
-		stmt.monthly_avg_inflow if stmt else 1.0,
-	)
-	if competing_ratio <= 0.10:
-		competing_loan_score = 20.0
-	elif competing_ratio <= 0.20:
-		competing_loan_score = 15.0
-	elif competing_ratio <= 0.30:
-		competing_loan_score = 10.0
-	elif competing_ratio <= 0.40:
-		competing_loan_score = 5.0
+	def _safe_div(n: float, d: float) -> float:
+		return n / d if d else 0.0
+
+	# ── Hard Rules ────────────────────────────────────────────────────────
+	hard_flags: list[str] = []
+
+	# HR-1: over-limit request
+	if requested > max_eligible:
+		hard_flags.append(
+			f"Requested amount exceeds eligible limit "
+			f"(KES {requested:,.0f} vs KES {max_eligible:,.0f})"
+		)
+
+	# HR-2: excessive gambling
+	gambling_total = stmt.gambling_total or 0.0
+	gambling_threshold = inflow * 0.10
+	if gambling_total > gambling_threshold:
+		hard_flags.append(
+			f"Gambling spend exceeds 10% of avg monthly inflow "
+			f"(KES {gambling_total:,.0f} vs threshold KES {gambling_threshold:,.0f})"
+		)
+
+	# HR-3: Watch category
+	if bp and (bp.credit_category or "") == "Watch":
+		hard_flags.append("Borrower is on Watch category — auto-approval blocked")
+
+	if hard_flags:
+		zero_sub = {k: 0.0 for k in _DEFAULT_WEIGHTS}
+		appraisal.set_ai_results(
+			appraisal_score=0.0,
+			sub_scores=zero_sub,
+			recommendation="Decline",
+			risk_flags=", ".join(hard_flags),
+			ai_summary=(
+				f"Appraisal declined by hard rule(s).\n\n"
+				+ "\n".join(f"• {f}" for f in hard_flags)
+			),
+			auto_approved=False,
+		)
+		return
+
+	# ── Sub-scores (each 0–100 raw) ───────────────────────────────────────
+	risk_flags: list[str] = []
+	soft_review = False
+
+	# 1. Salary regularity
+	sal_reg_pct = stmt.salary_credit_regularity or 0.0
+	sal_reg_frac = sal_reg_pct / 100.0          # normalise 0-100 → 0-1
+	salary_raw = sal_reg_frac * 100.0
+	if salary_raw < 60.0:
+		risk_flags.append(
+			f"Irregular salary credits ({sal_reg_frac:.0%} of months)"
+		)
+
+	# 2. Cashflow trend
+	trend = (stmt.net_cashflow_trend or "Stable")
+	trend_raw = {"Improving": 100.0, "Stable": 60.0, "Declining": 20.0}.get(trend, 60.0)
+	if trend == "Declining":
+		risk_flags.append("Declining net cashflow trend")
+
+	# 3. Competing loan burden
+	burden_ratio = _safe_div(stmt.loan_repayments_detected or 0.0, inflow)
+	if burden_ratio <= 0.10:
+		competing_raw = 100.0
+	elif burden_ratio <= 0.20:
+		competing_raw = 80.0
+	elif burden_ratio <= 0.30:
+		competing_raw = 60.0
 	else:
-		competing_loan_score = 0.0
+		competing_raw = 30.0
+		soft_review = True    # soft rule: escalate Approve → Review
+	if burden_ratio > 0.20:
+		risk_flags.append(
+			f"Competing loan repayments are {burden_ratio:.0%} of monthly income"
+		)
 
-	# 4. Payday behavior / buffer (0–15)
-	# Proxy: avg_monthly_balance / monthly_avg_inflow — borrowers who keep
-	# a healthy buffer relative to their inflow manage their cash well.
-	buffer_ratio = _ratio(
-		stmt.avg_monthly_balance if stmt else 0.0,
-		stmt.monthly_avg_inflow if stmt else 1.0,
+	# 4. Payday behavior
+	# payday_crash_months has no doctype field — defaults to 0 (no crashes observed)
+	total_months = _months_in_statement(
+		str(stmt.period_from or ""), str(stmt.period_to or "")
 	)
-	if buffer_ratio >= 0.20:
-		payday_behavior_score = 15.0
-	elif buffer_ratio >= 0.10:
-		payday_behavior_score = 10.0
-	elif buffer_ratio >= 0.05:
-		payday_behavior_score = 5.0
-	elif buffer_ratio >= 0.00:
-		payday_behavior_score = 2.0
+	payday_crash_months = 0
+	crash_rate = _safe_div(payday_crash_months, total_months)
+	if crash_rate == 0.0:
+		payday_raw = 100.0
+	elif crash_rate <= 0.17:
+		payday_raw = 80.0
+	elif crash_rate <= 0.33:
+		payday_raw = 60.0
 	else:
-		payday_behavior_score = 0.0  # negative balance (overdraft)
+		payday_raw = 30.0
+	if crash_rate > 0.17:
+		risk_flags.append(
+			f"Balance crashes near payday in {payday_crash_months} "
+			f"of {total_months} months"
+		)
 
-	# 5. Gambling risk (0–10)
-	gambling_ratio = _ratio(
-		stmt.gambling_total if stmt else 0.0,
-		stmt.monthly_avg_inflow if stmt else 1.0,
-	)
-	if not stmt or not stmt.gambling_transactions_detected:
-		gambling_score = 10.0
-	elif gambling_ratio <= 0.02:
-		gambling_score = 7.0
-	elif gambling_ratio <= 0.05:
-		gambling_score = 4.0
-	elif gambling_ratio <= 0.10:
-		gambling_score = 1.0
+	# 5. Gambling activity
+	gambling_ratio = _safe_div(gambling_total, inflow)
+	if gambling_ratio == 0.0:
+		gambling_raw = 100.0
+	elif gambling_ratio <= 0.03:
+		gambling_raw = 80.0
+	elif gambling_ratio <= 0.07:
+		gambling_raw = 50.0
 	else:
-		gambling_score = 0.0
+		gambling_raw = 20.0
+	if gambling_total > 0.0:
+		risk_flags.append(
+			f"Gambling transactions detected (KES {gambling_total:,.0f}/month avg)"
+		)
 
-	# 6. Request ratio (0–10)
-	max_eligible = appraisal.max_eligible_amount or 0.0
-	requested = appraisal.requested_amount or 0.0
-	req_ratio = _ratio(requested, max_eligible) if max_eligible > 0 else 999.0
+	# 6. Request ratio
+	req_ratio = _safe_div(requested, max_eligible) if max_eligible > 0 else 999.0
 	if req_ratio <= 0.50:
-		request_ratio_score = 10.0
+		req_raw = 100.0
 	elif req_ratio <= 0.75:
-		request_ratio_score = 7.0
-	elif req_ratio <= 1.00:
-		request_ratio_score = 4.0
+		req_raw = 80.0
+	elif req_ratio <= 0.90:
+		req_raw = 60.0
 	else:
-		request_ratio_score = 0.0
+		req_raw = 40.0
 
-	# ── Aggregate ─────────────────────────────────────────────────────────
+	# ── Weighted sub-score contributions (stored in doctype, range matches labels) ──
+	salary_regularity_score  = round(salary_raw  * weights["salary_regularity"]  / 100, 2)
+	cashflow_trend_score     = round(trend_raw   * weights["cashflow_trend"]     / 100, 2)
+	competing_loan_score     = round(competing_raw * weights["competing_loan"]   / 100, 2)
+	payday_behavior_score    = round(payday_raw  * weights["payday_behavior"]    / 100, 2)
+	gambling_score           = round(gambling_raw * weights["gambling"]          / 100, 2)
+	request_ratio_score      = round(req_raw     * weights["request_ratio"]      / 100, 2)
+
 	appraisal_score = round(
-		salary_regularity_score
-		+ cashflow_trend_score
-		+ competing_loan_score
-		+ payday_behavior_score
-		+ gambling_score
-		+ request_ratio_score,
-		2,
+		salary_regularity_score + cashflow_trend_score + competing_loan_score
+		+ payday_behavior_score + gambling_score + request_ratio_score,
+		1,
 	)
 
 	# ── Recommendation ────────────────────────────────────────────────────
-	if appraisal_score >= 65:
+	approve_threshold = settings.score_approve_threshold or 70.0
+	review_threshold  = settings.score_review_threshold  or 50.0
+
+	if appraisal_score >= approve_threshold:
 		recommendation = "Approve"
-	elif appraisal_score >= 40:
+	elif appraisal_score >= review_threshold:
 		recommendation = "Review"
 	else:
 		recommendation = "Decline"
 
-	# No statement → always require manual review regardless of score
-	if not stmt:
+	# Soft rule: competing loan burden > 30% escalates Approve → Review
+	if soft_review and recommendation == "Approve":
 		recommendation = "Review"
 
 	# ── Auto-approval gate ────────────────────────────────────────────────
-	# Fast-lanes borrower to "Pending Lender Confirm" without officer review.
 	auto_approved = bool(
 		recommendation == "Approve"
-		and appraisal_score >= 75
+		and appraisal_score >= 75.0
 		and appraisal.within_limit
-		and (not stmt or not stmt.gambling_transactions_detected)
-		and competing_ratio <= 0.30
+		and gambling_total == 0.0
+		and burden_ratio <= 0.30
 	)
 
-	# ── Risk flags and narrative ──────────────────────────────────────────
-	risk_flags_parts: list[str] = []
-
-	if not stmt:
-		risk_flags_parts.append("No M-Pesa Statement linked — manual review required.")
-	if stmt and stmt.gambling_transactions_detected:
-		risk_flags_parts.append(
-			f"Gambling detected: KES {stmt.gambling_total:,.2f} "
-			f"({gambling_ratio * 100:.1f}% of monthly inflow)."
-		)
-	if competing_ratio > 0.30:
-		risk_flags_parts.append(
-			f"Competing loan burden: {competing_ratio * 100:.1f}% of monthly inflow."
-		)
-	if trend == "Declining":
-		risk_flags_parts.append("Cashflow trend is Declining.")
-	if not appraisal.within_limit:
-		risk_flags_parts.append(
-			f"Requested amount KES {requested:,.2f} exceeds"
-			f" max eligible KES {max_eligible:,.2f}."
-		)
-
-	risk_flags = "\n".join(risk_flags_parts)
-
-	# Build a readable narrative for the lender
-	stmt_label = "No statement attached." if not stmt else (
-		f"Monthly inflow KES {stmt.monthly_avg_inflow:,.2f} | "
-		f"outflow KES {stmt.monthly_avg_outflow:,.2f} | "
-		f"avg balance KES {stmt.avg_monthly_balance:,.2f}. "
-		f"Cashflow trend: {trend}. "
-		f"Competing loan repayments: {competing_ratio * 100:.1f}% of income. "
-		f"Salary regularity: {(stmt.salary_credit_regularity or 0):.0f}%."
-	)
-
+	# ── Build narrative ───────────────────────────────────────────────────
 	ai_summary = (
-		f"Appraisal score: {appraisal_score:.0f}/100 ({recommendation}).\n\n"
-		f"Sub-scores: Salary regularity {salary_regularity_score:.1f}/25 | "
-		f"Cashflow trend {cashflow_trend_score:.1f}/20 | "
-		f"Competing loans {competing_loan_score:.1f}/20 | "
-		f"Payday buffer {payday_behavior_score:.1f}/15 | "
-		f"Gambling {gambling_score:.1f}/10 | "
-		f"Request ratio {request_ratio_score:.1f}/10.\n\n"
-		f"{stmt_label}"
-		+ (f"\n\nRisk flags:\n{risk_flags}" if risk_flags else "")
+		f"Appraisal score: {appraisal_score:.1f}/100 → {recommendation}.\n\n"
+		f"Sub-scores (weighted): "
+		f"Salary regularity {salary_regularity_score:.1f}/{weights['salary_regularity']} | "
+		f"Cashflow trend {cashflow_trend_score:.1f}/{weights['cashflow_trend']} | "
+		f"Competing loans {competing_loan_score:.1f}/{weights['competing_loan']} | "
+		f"Payday behavior {payday_behavior_score:.1f}/{weights['payday_behavior']} | "
+		f"Gambling {gambling_score:.1f}/{weights['gambling']} | "
+		f"Request ratio {request_ratio_score:.1f}/{weights['request_ratio']}.\n\n"
+		f"Monthly inflow KES {stmt.monthly_avg_inflow:,.0f} | "
+		f"outflow KES {stmt.monthly_avg_outflow:,.0f} | "
+		f"avg balance KES {stmt.avg_monthly_balance:,.0f}. "
+		f"Cashflow trend: {trend}. "
+		f"Competing burden: {burden_ratio:.0%} of income. "
+		f"Salary regularity: {sal_reg_pct:.0f}%."
+		+ (f"\n\nRisk flags: {', '.join(risk_flags)}" if risk_flags else "")
 	)
 
 	# ── Write results ─────────────────────────────────────────────────────
@@ -316,17 +415,33 @@ def run_appraisal_scoring(appraisal_name: str) -> None:
 		appraisal_score=appraisal_score,
 		sub_scores={
 			"salary_regularity": salary_regularity_score,
-			"cashflow_trend": cashflow_trend_score,
-			"competing_loan": competing_loan_score,
-			"payday_behavior": payday_behavior_score,
-			"gambling": gambling_score,
-			"request_ratio": request_ratio_score,
+			"cashflow_trend":    cashflow_trend_score,
+			"competing_loan":    competing_loan_score,
+			"payday_behavior":   payday_behavior_score,
+			"gambling":          gambling_score,
+			"request_ratio":     request_ratio_score,
 		},
 		recommendation=recommendation,
-		risk_flags=risk_flags,
+		risk_flags=", ".join(risk_flags),
 		ai_summary=ai_summary,
 		auto_approved=auto_approved,
 	)
+
+
+def _months_in_statement(period_from: str, period_to: str) -> int:
+	"""Return the number of calendar months spanned by the statement period.
+
+	Falls back to 3 if either date string is missing or unparseable.
+	"""
+	try:
+		if not period_from or not period_to:
+			return 3
+		from frappe.utils import getdate
+		d1 = getdate(period_from)
+		d2 = getdate(period_to)
+		return max(1, (d2.year - d1.year) * 12 + d2.month - d1.month + 1)
+	except Exception:
+		return 3
 
 
 # ---------------------------------------------------------------------------

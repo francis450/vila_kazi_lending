@@ -463,3 +463,108 @@ def compute_refinancing_amounts(loan_application_name: str) -> dict:
 		"new_loan_principal": new_loan_principal,
 		"net_disbursement": net_disbursement,
 	}
+
+
+# ---------------------------------------------------------------------------
+# Portal helpers — Customer Self-Service Portal
+# ---------------------------------------------------------------------------
+
+_PORTAL_SIDEBAR_ITEMS = [
+	{"title": "Dashboard", "route": "/portal"},
+	{"title": "My Profile", "route": "/portal/profile"},
+	{"title": "My Loans", "route": "/portal/loans"},
+	{"title": "Repayments", "route": "/portal/repayments"},
+	{"title": "Framework Agreement", "route": "/portal/agreement"},
+]
+
+
+def get_portal_customer(redirect_url: str = "/portal") -> str:
+	"""Validate the current session for portal access and return the Customer name.
+
+	Enforces three gates:
+	  1. User must be authenticated (not Guest).
+	  2. User must have the Borrower role.
+	  3. A Customer record must have website_user == session.user.
+
+	Redirects to /vk-login with a ``?next=`` param on failure so the user
+	can authenticate and be returned to the intended page.
+
+	Args:
+	    redirect_url: The URL to pass as ``?next=`` to the login page.
+	                  Defaults to "/portal".
+
+	Returns:
+	    str – the Customer name linked to the session user.
+
+	Raises:
+	    frappe.Redirect: If the user is a Guest or has no linked Customer.
+	    frappe.PermissionError: If the authenticated user lacks the Borrower role.
+	"""
+	if frappe.session.user == "Guest":
+		frappe.local.response["type"] = "redirect"
+		frappe.local.response["location"] = f"/login?redirect-to={redirect_url}"
+		raise frappe.Redirect(302)
+
+	if "Borrower" not in frappe.get_roles():
+		frappe.throw(
+			_("You do not have permission to access the borrower portal."),
+			frappe.PermissionError,
+		)
+
+	# ERPNext links portal users via the Customer.portal_users child table (Portal User doctype)
+	customer = frappe.db.get_value(
+		"Portal User",
+		{"user": frappe.session.user, "parenttype": "Customer"},
+		"parent",
+	)
+	if not customer:
+		frappe.throw(
+			_("Your account is not linked to a borrower profile. Please contact support."),
+			frappe.PermissionError,
+		)
+
+	return customer
+
+
+def setup_portal_context(context, active_route: str = "/portal") -> str:
+	"""Populate *context* with standard portal variables and return the Customer name.
+
+	Sets:
+	  - ``context.customer``         – Customer name (str)
+	  - ``context.borrower_profile`` – BorrowerProfile dict (or None if missing)
+	  - ``context.show_sidebar``     – True
+	  - ``context.sidebar_title``    – "My Portal"
+	  - ``context.sidebar_items``    – list of nav-link dicts; active item is
+	                                   identified by the sidebar template's own JS
+	  - ``context.portal_user``      – display name of the logged-in user
+
+	Args:
+	    context: Frappe template context object.
+	    active_route: The route of the currently rendered page (e.g. "/portal/loans").
+	                  Used to mark the correct sidebar item as active.
+
+	Returns:
+	    str – the Customer name (same value written to context.customer).
+	"""
+	customer = get_portal_customer(redirect_url=active_route)
+	context.customer = customer
+
+	context.borrower_profile = frappe.db.get_value(
+		"Borrower Profile",
+		customer,
+		[
+			"customer", "kyc_status", "credit_category", "credit_score",
+			"national_id_number", "employer_name", "bank", "bank_account_number",
+			"mpesa_number", "net_salary", "framework_agreement",
+			"total_borrowed", "total_repaid", "outstanding_balance",
+			"on_time_repayment_rate", "notes",
+		],
+		as_dict=True,
+	)
+
+	context.show_sidebar = True
+	context.sidebar_title = "My Portal"
+	context.sidebar_items = _PORTAL_SIDEBAR_ITEMS
+	context.portal_user = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+
+	return customer
