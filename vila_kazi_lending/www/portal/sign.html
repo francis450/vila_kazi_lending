@@ -1,0 +1,208 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="container" style="max-width:860px;">
+  <h3 class="mb-4">Sign Your Framework Agreement</h3>
+
+  {% if not fa %}
+  <div class="card shadow-sm">
+    <div class="card-body text-center py-5">
+      <h5 class="text-muted">No Agreement Found</h5>
+      <p class="text-muted">You don't have a pending agreement to sign.</p>
+      <a href="/portal" class="btn btn-primary btn-sm">Back to Dashboard</a>
+    </div>
+  </div>
+
+  {% elif fa.status == "Active" %}
+  <div class="alert alert-success">
+    Your agreement <strong>{{ fa.name }}</strong> is already signed and active.
+    {% if fa.signed_document %}
+    <a href="{{ fa.signed_document }}" class="ml-2" target="_blank">View Signed Document</a>
+    {% endif %}
+  </div>
+  <a href="/portal/agreement" class="btn btn-outline-secondary btn-sm mt-2">Back to Agreement</a>
+
+  {% elif fa.status == "Pending Signature" %}
+
+  <div class="alert alert-warning mb-4">
+    <strong>{{ fa.name }}</strong> &nbsp;|&nbsp; Version: {{ fa.clause_version or "v1" }}
+    &nbsp;|&nbsp; Valid From: {{ fa.valid_from or "--" }}
+  </div>
+
+  {% if agreement_html %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-white font-weight-bold d-flex justify-content-between">
+      <span>Agreement Text</span>
+      <small class="text-muted font-weight-normal">Read before signing</small>
+    </div>
+    <div class="card-body p-0">
+      <div style="max-height:420px;overflow-y:auto;padding:1.4rem;font-size:0.91rem;line-height:1.75;">
+        {{ agreement_html }}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-info mb-4">Agreement text is not available. You may still sign below.</div>
+  {% endif %}
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-warning text-dark font-weight-bold">Your Signature</div>
+    <div class="card-body">
+
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+          <a class="nav-link active" id="vks-draw-tab" href="#vks-draw" data-toggle="tab">Draw Signature</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="vks-upload-tab" href="#vks-upload" data-toggle="tab">Upload Image</a>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="vks-draw">
+          <p class="text-muted small">Use your mouse, trackpad or finger to draw your signature below.</p>
+          <div id="vks-canvas-wrap" style="border:2px solid #adb5bd;border-radius:6px;background:#fff;max-width:580px;touch-action:none;">
+            <canvas id="vks-canvas" style="display:block;width:100%;cursor:crosshair;" height="160"></canvas>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary mt-2" id="vks-clear">Clear</button>
+        </div>
+
+        <div class="tab-pane fade" id="vks-upload">
+          <p class="text-muted small">Upload a JPG or PNG of your handwritten signature.</p>
+          <input type="file" id="vks-file" accept="image/png,image/jpeg" class="form-control-file">
+          <div id="vks-file-preview" class="mt-3 d-none">
+            <img id="vks-file-img" src="" style="max-height:110px;border:1px solid #dee2e6;border-radius:4px;padding:4px;">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-check mt-4">
+        <input class="form-check-input" type="checkbox" id="vks-consent">
+        <label class="form-check-label" for="vks-consent">
+          I have read and agree to the terms of Framework Agreement <strong>{{ fa.name }}</strong>.
+        </label>
+      </div>
+
+      <div id="vks-error" class="alert alert-danger mt-3 d-none"></div>
+
+      <div class="mt-3">
+        <button class="btn btn-success btn-lg" id="vks-submit" data-fa="{{ fa.name }}" disabled>
+          Sign &amp; Generate PDF
+        </button>
+        <a id="vks-download" class="btn btn-primary btn-lg ml-2 d-none" href="#">
+          Download Signed PDF
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  {% else %}
+  <div class="alert alert-secondary">
+    This agreement cannot be signed (status: <strong>{{ fa.status }}</strong>).
+  </div>
+  <a href="/portal/agreement" class="btn btn-outline-secondary btn-sm">Back</a>
+  {% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+
+{% if fa and fa.status == "Pending Signature" %}
+<script>
+(function(){
+  "use strict";
+  var canvas = document.getElementById("vks-canvas");
+  var wrap   = document.getElementById("vks-canvas-wrap");
+  var pad    = new SignaturePad(canvas, { backgroundColor:"rgb(255,255,255)" });
+  var uploadData = null;
+
+  function fitCanvas(){
+    var r = Math.max(window.devicePixelRatio||1,1);
+    var w = wrap.clientWidth || 580;
+    canvas.width  = w * r;
+    canvas.height = 160 * r;
+    canvas.style.width  = w + "px";
+    canvas.style.height = "160px";
+    canvas.getContext("2d").scale(r,r);
+    pad.clear();
+  }
+  window.addEventListener("resize", fitCanvas);
+  fitCanvas();
+
+  document.getElementById("vks-clear").addEventListener("click", function(){ pad.clear(); sync(); });
+  pad.addEventListener("endStroke", sync);
+
+  document.getElementById("vks-file").addEventListener("change", function(){
+    var f = this.files && this.files[0];
+    if(!f){ uploadData=null; sync(); return; }
+    var r = new FileReader();
+    r.onload = function(e){
+      uploadData = e.target.result;
+      document.getElementById("vks-file-img").src = uploadData;
+      document.getElementById("vks-file-preview").classList.remove("d-none");
+      sync();
+    };
+    r.readAsDataURL(f);
+  });
+
+  document.getElementById("vks-draw-tab").addEventListener("click", function(){
+    uploadData = null;
+    document.getElementById("vks-file").value = "";
+    document.getElementById("vks-file-preview").classList.add("d-none");
+    sync();
+  });
+  document.getElementById("vks-upload-tab").addEventListener("click", function(){ pad.clear(); sync(); });
+  document.getElementById("vks-consent").addEventListener("change", sync);
+
+  function drawActive(){ return document.getElementById("vks-draw").classList.contains("active"); }
+  function hasSig()    { return drawActive() ? !pad.isEmpty() : !!uploadData; }
+  function sync()      { document.getElementById("vks-submit").disabled = !(hasSig() && document.getElementById("vks-consent").checked); }
+
+  document.getElementById("vks-submit").addEventListener("click", function(){
+    var btn = this;
+    var errEl = document.getElementById("vks-error");
+    var faName = btn.getAttribute("data-fa");
+    var sigData = drawActive() ? pad.toDataURL("image/png") : uploadData;
+
+    if(!sigData){ errEl.textContent="Please provide your signature."; errEl.classList.remove("d-none"); return; }
+
+    btn.disabled = true;
+    btn.textContent = "Generating PDF...";
+    errEl.classList.add("d-none");
+
+    frappe.call({
+      method: "vila_kazi_lending.api.sign_framework_agreement",
+      args: { fa_name: faName, signature_data: sigData },
+      callback: function(r){
+        if(r.message && r.message.success){
+          btn.classList.add("d-none");
+          if(r.message.signed_pdf_url){
+            var dl = document.getElementById("vks-download");
+            dl.href = r.message.signed_pdf_url;
+            dl.classList.remove("d-none");
+          }
+          setTimeout(function(){ window.location.href="/portal/agreement"; }, 2500);
+        } else {
+          btn.disabled = false;
+          btn.textContent = "Sign & Generate PDF";
+          errEl.textContent = "Signing failed. Please try again or contact support.";
+          errEl.classList.remove("d-none");
+        }
+      },
+      error: function(r){
+        btn.disabled = false;
+        btn.textContent = "Sign & Generate PDF";
+        var msg = (r._server_messages && JSON.parse(r._server_messages)[0]) || "An error occurred.";
+        try{ msg = JSON.parse(msg).message||msg; }catch(e){}
+        errEl.textContent = msg;
+        errEl.classList.remove("d-none");
+      }
+    });
+  });
+}());
+</script>
+{% endif %}
+{% endblock %}
